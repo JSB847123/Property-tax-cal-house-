@@ -9,6 +9,7 @@ import { Calculator, Home, RotateCcw } from "lucide-react";
 import CalculationSteps from "./CalculationSteps";
 import ResultsDisplay from "./ResultsDisplay";
 import MultiUnitInputs from "./MultiUnitInputs";
+import FAQ from "./FAQ";
 import { PropertyData, CalculationResult, MultiUnitData, PreviousYearMultiUnitData } from "@/types/propertyTax";
 import { calculateMarketValueRatio } from "@/utils/taxCalculations";
 import { formatNumberWithCommas, parseNumberFromInput } from "@/utils/formatUtils";
@@ -575,6 +576,9 @@ const PropertyTaxCalculator = () => {
           showAdvanced={true}
         />
       )}
+
+      {/* 자주 들어오는 질문 */}
+      <FAQ />
 
       {/* 계산 단계 설명 */}
       <CalculationSteps />
