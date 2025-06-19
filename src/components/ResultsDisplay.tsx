@@ -75,7 +75,7 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
     explanation += "3. 재산세 본세 계산\n";
     
     // 세율 적용 계산 표시
-    const basePropertyTaxBeforeOwnership = result.propertyTax / (propertyData.ownershipRatio / 100);
+    const basePropertyTaxBeforeOwnership = result.specialRateAmount;
     let taxRateDescription = "";
     
     if (propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000 && propertyData.propertyType !== "다가구주택") {
@@ -92,14 +92,14 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
       }
     } else {
       // 표준세율 구간별 설명
-      if (result.taxableStandard <= 60000000) {
-        taxRateDescription = "과세표준 6천만원 이하: 1.0/1,000";
+      if (result.taxableStandard <= 6000000) {
+        taxRateDescription = "과세표준 600만원 이하: 1.0/1,000";
       } else if (result.taxableStandard <= 150000000) {
-        taxRateDescription = "과세표준에 구간에 따른 세율 (60,000원 + 6천만원 초과금액의 1.5/1,000)";
+        taxRateDescription = "과세표준에 구간에 따른 세율 (6,000원 + 600만원 초과금액의 1.5/1,000)";
       } else if (result.taxableStandard <= 300000000) {
-        taxRateDescription = "과세표준에 구간에 따른 세율 (195,000원 + 1억5천만원 초과금액의 2.5/1,000)";
+        taxRateDescription = "과세표준에 구간에 따른 세율 (216,000원 + 1억5천만원 초과금액의 2.5/1,000)";
       } else {
-        taxRateDescription = "과세표준에 구간에 따른 세율 (570,000원 + 3억원 초과금액의 4.0/1,000)";
+        taxRateDescription = "과세표준에 구간에 따른 세율 (591,000원 + 3억원 초과금액의 4.0/1,000)";
       }
     }
     
@@ -472,14 +472,14 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                         </div>
                       );
                     } else {
-                      if (result.taxableStandard <= 60000000) {
-                        taxRateDescription = "과세표준 6천만원 이하: 1.0/1,000";
+                      if (result.taxableStandard <= 6000000) {
+                        taxRateDescription = "과세표준 600만원 이하: 1.0/1,000";
                       } else if (result.taxableStandard <= 150000000) {
-                        taxRateDescription = "과세표준에 구간에 따른 세율 (60,000원 + 6천만원 초과금액의 1.5/1,000)";
+                        taxRateDescription = "과세표준에 구간에 따른 세율 (6,000원 + 600만원 초과금액의 1.5/1,000)";
                       } else if (result.taxableStandard <= 300000000) {
-                        taxRateDescription = "과세표준에 구간에 따른 세율 (195,000원 + 1억5천만원 초과금액의 2.5/1,000)";
+                        taxRateDescription = "과세표준에 구간에 따른 세율 (216,000원 + 1억5천만원 초과금액의 2.5/1,000)";
                       } else {
-                        taxRateDescription = "과세표준에 구간에 따른 세율 (570,000원 + 3억원 초과금액의 4.0/1,000)";
+                        taxRateDescription = "과세표준에 구간에 따른 세율 (591,000원 + 3억원 초과금액의 4.0/1,000)";
                       }
                       return (
                         <div className="text-gray-700">
@@ -495,7 +495,7 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                 <div className="bg-green-50 p-4 rounded-lg border border-green-200">
                   <span className="text-sm text-gray-600 block mb-2">세율 적용 계산</span>
                   <p className="text-gray-700">
-                    최종 과세표준 {formatCurrency(result.taxableStandard)}원 × 세율 = {formatCurrency(result.propertyTax / (propertyData.ownershipRatio / 100))}원
+                    최종 과세표준 {formatCurrency(result.taxableStandard)}원 × 세율 = {formatCurrency(result.specialRateAmount)}원
                   </p>
                 </div>
                 
@@ -514,7 +514,7 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                    <div className="bg-yellow-100 p-4 rounded-lg border border-yellow-300">
                      <span className="text-sm text-gray-600 block mb-2">세액 비교 및 선택</span>
                      <p className="text-gray-700">
-                       최종 과세표준을 적용한 재산세 본세와 세부담상한제 적용한 재산세 본세 중 작은 세액: {formatCurrency(Math.min(result.propertyTax / (propertyData.ownershipRatio / 100), Math.floor((propertyData.previousYear.actualPaidTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10))}원
+                       세율 적용 세액 {formatCurrency(result.specialRateAmount)}원과 세부담상한액 {formatCurrency(Math.floor((propertyData.previousYear.actualPaidTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10)}원 중 작은 금액: {formatCurrency(Math.min(result.specialRateAmount, Math.floor((propertyData.previousYear.actualPaidTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10))}원
                      </p>
                    </div>
                  )}

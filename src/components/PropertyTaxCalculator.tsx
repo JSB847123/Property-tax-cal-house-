@@ -45,10 +45,14 @@ const PropertyTaxCalculator = () => {
 
   const [propertyData, setPropertyData] = useState<PropertyData>(initialPropertyData);
   const [result, setResult] = useState<CalculationResult | null>(null);
+  const [isSingleHouseholdSelected, setIsSingleHouseholdSelected] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string>("");
 
   const resetCalculator = () => {
     setPropertyData(initialPropertyData);
     setResult(null);
+    setIsSingleHouseholdSelected(false);
+    setErrorMessage("");
   };
 
   const addMultiUnit = () => {
@@ -109,6 +113,13 @@ const PropertyTaxCalculator = () => {
   };
 
   const calculateTax = () => {
+    // 1세대 1주택 여부 선택 확인
+    if (!isSingleHouseholdSelected) {
+      setErrorMessage("1세대 1주택 여부를 선택하시오.");
+      return;
+    }
+    
+    setErrorMessage("");
     const calculationResult = performTaxCalculation(propertyData);
     setResult(calculationResult);
   };
@@ -171,22 +182,26 @@ const PropertyTaxCalculator = () => {
 
             {/* 1세대 1주택 여부 */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700">1세대 1주택입니까?</Label>
+              <Label className="text-lg font-bold text-gray-700">1세대 1주택입니까?</Label>
               <RadioGroup
-                value={propertyData.isSingleHousehold ? "yes" : "no"}
-                onValueChange={(value) => setPropertyData(prev => ({
-                  ...prev,
-                  isSingleHousehold: value === "yes"
-                }))}
+                value={isSingleHouseholdSelected ? (propertyData.isSingleHousehold ? "yes" : "no") : ""}
+                onValueChange={(value) => {
+                  setIsSingleHouseholdSelected(true);
+                  setPropertyData(prev => ({
+                    ...prev,
+                    isSingleHousehold: value === "yes"
+                  }));
+                  setErrorMessage("");
+                }}
                 className="flex gap-6"
               >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="yes" id="yes" />
-                  <Label htmlFor="yes">예</Label>
+                <div className="flex items-center space-x-3">
+                  <RadioGroupItem value="yes" id="yes" className="w-5 h-5" />
+                  <Label htmlFor="yes" className="text-lg font-bold">예</Label>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="no" id="no" />
-                  <Label htmlFor="no">아니오</Label>
+                <div className="flex items-center space-x-3">
+                  <RadioGroupItem value="no" id="no" className="w-5 h-5" />
+                  <Label htmlFor="no" className="text-lg font-bold">아니오</Label>
                 </div>
               </RadioGroup>
             </div>
@@ -541,6 +556,13 @@ const PropertyTaxCalculator = () => {
             <Calculator className="w-5 h-5 mr-2" />
             재산세 계산하기
           </Button>
+          
+          {/* 에러 메시지 표시 */}
+          {errorMessage && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <p className="text-red-700 text-center font-medium">{errorMessage}</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

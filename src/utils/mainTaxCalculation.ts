@@ -82,7 +82,7 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     const taxableStandardData = calculateTaxableStandardWithCap(
       propertyData.publicPrice, 
       propertyData.isSingleHousehold,
-      propertyData.previousYear.publicPrice,
+      propertyData.previousYear.taxableStandard,
       propertyData.taxStandardCapRate
     );
     
@@ -94,15 +94,16 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     let basePropertyTax = calculatePropertyTaxForStandard(taxableStandard, propertyData.isSingleHousehold, propertyData.publicPrice);
     basePropertyTax = Math.floor(basePropertyTax / 10) * 10;
     
+    console.log('세부담상한제 적용 전 기본 세액:', basePropertyTax);
+    
     standardPropertyTax = calculateStandardPropertyTax(taxableStandard);
     
     const marketValueRatio = calculateMarketValueRatio(propertyData.publicPrice, propertyData.isSingleHousehold);
     calculationDetails = `공시가격 ${formatNumberWithCommas(propertyData.publicPrice)}원 × 공정시장가액비율 ${(marketValueRatio * 100).toFixed(1)}% = 기준 과세표준 ${formatNumberWithCommas(taxableStandardBeforeCap)}원`;
     
-    if (propertyData.previousYear.publicPrice > 0 && taxableStandardCap > 0) {
-      const previousYearEquivalentStandard = propertyData.previousYear.publicPrice * marketValueRatio;
+    if (propertyData.previousYear.taxableStandard > 0 && taxableStandardCap > 0) {
       calculationDetails += `\n\n과표상한제 적용:`;
-      calculationDetails += `\n• 직전연도 과세표준 상당액: ${formatNumberWithCommas(previousYearEquivalentStandard)}원`;
+      calculationDetails += `\n• 직전연도 과세표준: ${formatNumberWithCommas(propertyData.previousYear.taxableStandard)}원`;
       calculationDetails += `\n• 과표상한액: ${formatNumberWithCommas(taxableStandardCap)}원`;
       calculationDetails += `\n• 최종 과세표준: ${formatNumberWithCommas(taxableStandard)}원 (기준 과세표준과 과표상한액 중 작은 값)`;
     }
@@ -111,6 +112,8 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     if (propertyData.previousYear.actualPaidTax > 0) {
       // 세부담상한액 = 전년도 실제 납부세액 × 110%
       const taxBurdenCapAmount = Math.floor((propertyData.previousYear.actualPaidTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10;
+      
+      console.log('세부담상한제 계산:', { basePropertyTax, taxBurdenCapAmount });
       
       // 특례세율 적용액과 세부담상한액 중 더 적은 금액 선택
       propertyTax = Math.min(basePropertyTax, taxBurdenCapAmount);
@@ -187,6 +190,29 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     taxBurdenCapAmount = Math.floor((previousYearEquivalent * (propertyData.taxBurdenCapRate / 100)) / 10) * 10;
   }
   
+  // 기본 세액 (세부담상한제 적용 전) 저장 - 소유비율 적용
+  let basePropertyTaxAmount = 0;
+  if (propertyData.propertyType === "다가구주택") {
+    // 다가구주택의 경우
+    let totalTaxBeforeRounding = 0;
+    propertyData.multiUnits.forEach((unit) => {
+      const exactTax = calculatePropertyTaxForStandard(unit.taxableStandard, propertyData.isSingleHousehold, unit.taxableStandard);
+      totalTaxBeforeRounding += exactTax;
+    });
+    basePropertyTaxAmount = Math.floor(totalTaxBeforeRounding / 10) * 10;
+    basePropertyTaxAmount = basePropertyTaxAmount * (propertyData.ownershipRatio / 100);
+    basePropertyTaxAmount = Math.floor(basePropertyTaxAmount / 10) * 10;
+  } else {
+    // 일반 주택의 경우
+    basePropertyTaxAmount = calculatePropertyTaxForStandard(taxableStandard, propertyData.isSingleHousehold, propertyData.publicPrice);
+    basePropertyTaxAmount = Math.floor(basePropertyTaxAmount / 10) * 10;
+    basePropertyTaxAmount = basePropertyTaxAmount * (propertyData.ownershipRatio / 100);
+    basePropertyTaxAmount = Math.floor(basePropertyTaxAmount / 10) * 10;
+  }
+
+  console.log('specialRateAmount 계산:', basePropertyTaxAmount);
+  console.log('propertyTax (최종):', propertyTax);
+
   const calculationResult: CalculationResult = {
     taxableStandard,
     taxableStandardBeforeCap,
@@ -200,7 +226,7 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     yearTotal,
     calculationDetails,
     standardRateAmount: standardPropertyTax,
-    specialRateAmount: propertyTax,
+    specialRateAmount: basePropertyTaxAmount,
     previousYearEquivalent,
     previousYearEquivalentWithReduction,
     taxBurdenCapAmount,
