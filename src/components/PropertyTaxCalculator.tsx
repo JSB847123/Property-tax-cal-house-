@@ -34,7 +34,7 @@ const PropertyTaxCalculator = () => {
       taxableStandard: 0,
       actualPaidTax: 0,
       appliedRate: 'standard',
-      reductionRate: 0,
+      marketValueRatio: 0,
       regionalResourceTaxStandard: 0,
       multiUnits: [],
       hasOwnershipChange: false,
@@ -428,19 +428,51 @@ const PropertyTaxCalculator = () => {
             
             {/* 전년도 일반 주택 정보 */}
             {propertyData.propertyType !== "다가구주택" && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-gray-700">전년도 공시가격 (원)</Label>
                   <Input
                     type="text"
                     value={propertyData.previousYear.publicPrice ? formatNumberWithCommas(propertyData.previousYear.publicPrice) : ""}
-                    onChange={(e) => setPropertyData(prev => ({
-                      ...prev,
-                      previousYear: {
-                        ...prev.previousYear,
-                        publicPrice: parseNumberFromInput(e.target.value)
-                      }
-                    }))}
+                    onChange={(e) => {
+                      const publicPrice = parseNumberFromInput(e.target.value);
+                      const marketValueRatio = propertyData.previousYear.marketValueRatio || 0;
+                      const calculatedTaxableStandard = Math.floor(publicPrice * marketValueRatio / 100);
+                      
+                      setPropertyData(prev => ({
+                        ...prev,
+                        previousYear: {
+                          ...prev.previousYear,
+                          publicPrice: publicPrice,
+                          taxableStandard: calculatedTaxableStandard
+                        }
+                      }));
+                    }}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">전년도 공정시장가액비율 (%)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    value={propertyData.previousYear.marketValueRatio || ""}
+                    onChange={(e) => {
+                      const marketValueRatio = Number(e.target.value);
+                      const publicPrice = propertyData.previousYear.publicPrice || 0;
+                      const calculatedTaxableStandard = Math.floor(publicPrice * marketValueRatio / 100);
+                      
+                      setPropertyData(prev => ({
+                        ...prev,
+                        previousYear: {
+                          ...prev.previousYear,
+                          marketValueRatio: marketValueRatio,
+                          taxableStandard: calculatedTaxableStandard
+                        }
+                      }));
+                    }}
                   />
                 </div>
 
@@ -449,13 +481,8 @@ const PropertyTaxCalculator = () => {
                   <Input
                     type="text"
                     value={propertyData.previousYear.taxableStandard ? formatNumberWithCommas(propertyData.previousYear.taxableStandard) : ""}
-                    onChange={(e) => setPropertyData(prev => ({
-                      ...prev,
-                      previousYear: {
-                        ...prev.previousYear,
-                        taxableStandard: parseNumberFromInput(e.target.value)
-                      }
-                    }))}
+                    readOnly
+                    className="bg-gray-50"
                   />
                 </div>
                 
@@ -531,22 +558,7 @@ const PropertyTaxCalculator = () => {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700">전년도 감면율 (%)</Label>
-              <Input
-                type="number"
-                min="0"
-                max="100"
-                value={propertyData.previousYear.reductionRate || ""}
-                onChange={(e) => setPropertyData(prev => ({
-                  ...prev,
-                  previousYear: {
-                    ...prev.previousYear,
-                    reductionRate: Number(e.target.value)
-                  }
-                }))}
-              />
-            </div>
+
           </div>
           
           <Button 

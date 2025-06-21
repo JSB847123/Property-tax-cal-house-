@@ -88,7 +88,7 @@ export const calculatePropertyTaxForStandard = (taxableStandard: number, isSingl
     return result;
   } else {
     const result = taxableStandard * 0.004 - 630000;
-    console.log('표준세율 - 3억원 초과:', result);
+    console.log('표준세율 - 3억원 초과:', { taxableStandard, calculation: `${taxableStandard} * 0.004 - 630000 = ${result}` });
     return result;
   }
 };
@@ -102,7 +102,9 @@ export const calculateStandardPropertyTax = (taxableStandard: number): number =>
   } else if (taxableStandard <= 300000000) {
     return taxableStandard * 0.0025 - 180000;
   } else {
-    return taxableStandard * 0.004 - 630000;
+    const result = taxableStandard * 0.004 - 630000;
+    console.log('표준세율 함수 - 3억원 초과:', { taxableStandard, calculation: `${taxableStandard} * 0.004 - 630000 = ${result}` });
+    return result;
   }
 };
 
