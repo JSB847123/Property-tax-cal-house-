@@ -20,7 +20,13 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
   };
 
   const getQuarterlyPayment = (): number => {
-    return Math.floor((result.yearTotal * 0.5) / 10) * 10;
+    // 각 세목별로 1/2씩 계산해서 합산
+    const propertyTaxHalf = Math.floor((result.propertyTax * 0.5) / 10) * 10;
+    const urbanAreaTaxHalf = Math.floor((result.urbanAreaTax * 0.5) / 10) * 10;
+    const localEducationTaxHalf = Math.floor((result.localEducationTax * 0.5) / 10) * 10;
+    const regionalResourceTaxHalf = Math.floor((result.regionalResourceTax * 0.5) / 10) * 10;
+    
+    return propertyTaxHalf + urbanAreaTaxHalf + localEducationTaxHalf + regionalResourceTaxHalf;
   };
 
   // 민원인 설명란을 위한 상세 계산 과정 생성
@@ -107,6 +113,13 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
       explanation += `- 최종 재산세: ${formatCurrency(result.propertyTax)}원\n`;
     }
     
+    // 감면 적용 (재산세 본세에만)
+    if (propertyData.reductionType === "임대주택" && propertyData.currentYearReductionRate > 0) {
+      explanation += `- 임대주택 감면 적용 (재산세 본세에만): 감면율 ${propertyData.currentYearReductionRate}%\n`;
+    } else if ((propertyData.reductionType === "전세사기 감면" || propertyData.reductionType === "노후연금") && propertyData.currentYearReductionRate > 0) {
+      explanation += `- ${propertyData.reductionType} 적용 (재산세 본세에만): 감면율 ${propertyData.currentYearReductionRate}%\n`;
+    }
+    
     explanation += "\n";
     
     // 4. 도시지역분 계산
@@ -120,12 +133,26 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
       explanation += `- 도시지역분 상한액: 전년도 × ${propertyData.taxBurdenCapRate}% = ${formatCurrency(propertyData.previousYear.urbanAreaTax)} × ${propertyData.taxBurdenCapRate}% = ${formatCurrency(urbanAreaTaxCap)}원\n`;
       explanation += `- 최종 도시지역분: ${formatCurrency(result.urbanAreaTax)}원 (기본 도시지역분과 상한액 중 작은 값)\n\n`;
     } else {
-      explanation += `- 최종 도시지역분: ${formatCurrency(result.urbanAreaTax)}원\n\n`;
+      explanation += `- 최종 도시지역분: ${formatCurrency(result.urbanAreaTax)}원\n`;
     }
+    
+    if (propertyData.reductionType === "임대주택" && propertyData.currentYearReductionRate > 0) {
+      explanation += `- 도시지역분은 임대주택 감면 적용 대상이 아님\n`;
+    } else if ((propertyData.reductionType === "전세사기 감면" || propertyData.reductionType === "노후연금") && propertyData.currentYearReductionRate > 0) {
+      explanation += `- 도시지역분은 ${propertyData.reductionType} 적용 대상이 아님\n`;
+    }
+    
+    explanation += "\n";
     
     // 5. 지방교육세 계산
     explanation += "5. 지방교육세 계산\n";
-    explanation += `- 지방교육세: 재산세 본세 × 20% = ${formatCurrency(result.propertyTax)} × 20% = ${formatCurrency(result.localEducationTax)}원\n\n`;
+    explanation += `- 지방교육세: 재산세 본세 × 20% = ${formatCurrency(result.propertyTax)} × 20% = ${formatCurrency(result.localEducationTax)}원\n`;
+    if (propertyData.reductionType === "임대주택" && propertyData.currentYearReductionRate > 0) {
+      explanation += `- 임대주택 감면이 적용된 재산세 본세를 기준으로 계산됨\n`;
+    } else if ((propertyData.reductionType === "전세사기 감면" || propertyData.reductionType === "노후연금") && propertyData.currentYearReductionRate > 0) {
+      explanation += `- ${propertyData.reductionType}이 적용된 재산세 본세를 기준으로 계산됨\n`;
+    }
+    explanation += "\n";
     
     // 6. 지역자원시설세 계산
     explanation += "6. 지역자원시설세 계산\n";
@@ -182,17 +209,19 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
       regionalTaxAfterProcessing = regionalTaxAfterSingleHouseholdDiscount;
     }
     
-    // 감면율 적용 (있는 경우)
-    if (propertyData.currentYearReductionRate > 0) {
-      const regionalFinalAmount = regionalTaxAfterProcessing * (1 - propertyData.currentYearReductionRate / 100);
-      explanation += `- 감면율 적용: ${formatCurrency(regionalTaxAfterProcessing)} × (1 - ${propertyData.currentYearReductionRate}%) = ${formatCurrency(regionalFinalAmount)}원\n`;
-    }
+
     
     // 10원 미만 절사
     explanation += `- 10원 미만 절사 후 최종 지역자원시설세: ${formatCurrency(result.regionalResourceTax)}원\n`;
     
     if (result.regionalResourceTax < 1000) {
       explanation += `- 소액 징수면제: 1,000원 미만으로 징수면제 적용\n`;
+    }
+    
+    if (propertyData.reductionType === "임대주택" && propertyData.currentYearReductionRate > 0) {
+      explanation += `- 지역자원시설세는 임대주택 감면 적용 대상이 아님\n`;
+    } else if ((propertyData.reductionType === "전세사기 감면" || propertyData.reductionType === "노후연금") && propertyData.currentYearReductionRate > 0) {
+      explanation += `- 지역자원시설세는 ${propertyData.reductionType} 적용 대상이 아님\n`;
     }
     
     explanation += "\n";
@@ -209,7 +238,7 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
     explanation += "8. 납부 방법\n";
     explanation += `- 1기분 (7월): ${formatCurrency(getQuarterlyPayment())}원\n`;
     explanation += `- 2기분 (9월): ${formatCurrency(getQuarterlyPayment())}원\n`;
-    explanation += "- 각 기별로 재산세 총액의 50%씩 분할 납부\n\n";
+    explanation += "- 각 기별로 각 세목(재산세 본세, 도시지역분, 지방교육세, 지역자원시설세)의 50%씩 분할 납부\n\n";
     
     // 9. 계산기준
     explanation += "9. 계산기준\n";
@@ -485,13 +514,25 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                       : result.standardRateAmount;
                     const roundedBasePropertyTax = Math.floor(basePropertyTaxBeforeOwnership / 10) * 10;
                     
-                    // 소유비율 적용한 올바른 값 계산
-                    const propertyTaxWithOwnership = Math.floor((roundedBasePropertyTax * (propertyData.ownershipRatio / 100)) / 10) * 10;
+                    // 소유비율 적용한 값 계산
+                    let propertyTaxWithOwnership = Math.floor((roundedBasePropertyTax * (propertyData.ownershipRatio / 100)) / 10) * 10;
+                    
+                    // 전세사기 감면, 노후연금 감면 적용 (소유비율 적용 후)
+                    if ((propertyData.reductionType === "전세사기 감면" || propertyData.reductionType === "노후연금") && propertyData.currentYearReductionRate > 0) {
+                      propertyTaxWithOwnership = Math.floor((propertyTaxWithOwnership * (1 - propertyData.currentYearReductionRate / 100)) / 10) * 10;
+                    }
                     
                     return (
                       <div className="text-gray-700 space-y-1">
-                        <p>최종 과세표준 × 세율 × 소유비율 = 최종 재산세</p>
-                        <p>{formatCurrency(result.taxableStandard)}원 × 세율 × {propertyData.ownershipRatio}% = {formatCurrency(propertyTaxWithOwnership)}원</p>
+                        <p>최종 과세표준 × 세율 × 소유비율</p>
+                        {(propertyData.reductionType === "전세사기 감면" || propertyData.reductionType === "노후연금") && propertyData.currentYearReductionRate > 0 ? (
+                          <>
+                            <p>{formatCurrency(result.taxableStandard)}원 × 세율 × {propertyData.ownershipRatio}% × (1 - {propertyData.currentYearReductionRate}%) = {formatCurrency(propertyTaxWithOwnership)}원</p>
+                            <p className="text-xs text-purple-600">※ {propertyData.reductionType} {propertyData.currentYearReductionRate}% 적용</p>
+                          </>
+                        ) : (
+                          <p>{formatCurrency(result.taxableStandard)}원 × 세율 × {propertyData.ownershipRatio}% = {formatCurrency(propertyTaxWithOwnership)}원</p>
+                        )}
                         <p className="text-xs text-gray-500">※ 기본 세액(소유비율 적용 전): {formatCurrency(roundedBasePropertyTax)}원</p>
                       </div>
                     );
@@ -520,7 +561,12 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                          ? result.specialRateAmount 
                          : result.standardRateAmount;
                        const roundedBasePropertyTax = Math.floor(basePropertyTaxBeforeOwnership / 10) * 10;
-                       const propertyTaxWithOwnership = Math.floor((roundedBasePropertyTax * (propertyData.ownershipRatio / 100)) / 10) * 10;
+                       let propertyTaxWithOwnership = Math.floor((roundedBasePropertyTax * (propertyData.ownershipRatio / 100)) / 10) * 10;
+                       
+                       // 전세사기 감면, 노후연금 감면 적용 (소유비율 적용 후)
+                       if ((propertyData.reductionType === "전세사기 감면" || propertyData.reductionType === "노후연금") && propertyData.currentYearReductionRate > 0) {
+                         propertyTaxWithOwnership = Math.floor((propertyTaxWithOwnership * (1 - propertyData.currentYearReductionRate / 100)) / 10) * 10;
+                       }
                        
                        return (
                          <div className="text-gray-700 space-y-1">
@@ -532,6 +578,38 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                      })()}
                    </div>
                  )}
+                
+                {/* 임대주택 감면 적용 */}
+                {propertyData.reductionType === "임대주택" && propertyData.currentYearReductionRate > 0 && (
+                  <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                    <span className="text-sm text-gray-600 block mb-2">임대주택 감면 적용</span>
+                    {(() => {
+                      // 감면 전 재산세 계산
+                      let beforeReductionTax = 0;
+                      if (propertyData.previousYear.actualPaidTax > 0) {
+                        const taxBurdenCapAmount = Math.floor((propertyData.previousYear.actualPaidTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10;
+                        const basePropertyTaxBeforeOwnership = propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000 && propertyData.propertyType !== "다가구주택" 
+                          ? result.specialRateAmount 
+                          : result.standardRateAmount;
+                        const propertyTaxWithOwnership = Math.floor((Math.floor(basePropertyTaxBeforeOwnership / 10) * 10 * (propertyData.ownershipRatio / 100)) / 10) * 10;
+                        beforeReductionTax = Math.min(propertyTaxWithOwnership, taxBurdenCapAmount);
+                      } else {
+                        const basePropertyTaxBeforeOwnership = propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000 && propertyData.propertyType !== "다가구주택" 
+                          ? result.specialRateAmount 
+                          : result.standardRateAmount;
+                        beforeReductionTax = Math.floor((Math.floor(basePropertyTaxBeforeOwnership / 10) * 10 * (propertyData.ownershipRatio / 100)) / 10) * 10;
+                      }
+                      
+                      return (
+                        <div className="text-gray-700 space-y-1">
+                          <p>감면 전 재산세: {formatCurrency(beforeReductionTax)}원</p>
+                          <p>감면율: {propertyData.currentYearReductionRate}%</p>
+                          <p>감면 후 재산세: {formatCurrency(result.propertyTax)}원</p>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
                 
                 {/* 최종 결과 */}
                 <div className="bg-green-100 p-4 rounded-lg border border-green-300">
@@ -584,6 +662,9 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                 <span className="text-sm text-gray-600 block mb-1">지방교육세</span>
                 <p className="text-gray-700">
                   재산세 본세 × 20% = {formatCurrency(result.propertyTax)} × 20% = <span className="font-bold text-lg">{formatCurrency(result.localEducationTax)}원</span>
+                  {propertyData.reductionType === "임대주택" && propertyData.currentYearReductionRate > 0 && (
+                    <span className="text-sm text-purple-600 block mt-1">※ 감면이 적용된 재산세 본세를 기준으로 계산</span>
+                  )}
                 </p>
               </div>
             </div>
@@ -664,14 +745,7 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                         </div>
                       )}
                       
-                      {propertyData.currentYearReductionRate > 0 && (
-                        <div className="bg-cyan-50 p-4 rounded-lg border border-cyan-200">
-                          <span className="text-sm text-gray-600 block mb-1">감면율 적용</span>
-                          <p className="text-gray-700">
-                            감면 대상시 {propertyData.currentYearReductionRate}% 감면 적용
-                          </p>
-                        </div>
-                      )}
+
                       
                       <div className="bg-cyan-100 p-4 rounded-lg border border-cyan-300">
                         <span className="text-sm text-gray-600 block mb-1">최종 지역자원시설세 (10원 미만 절사)</span>
