@@ -55,11 +55,9 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     if (propertyData.previousYear.actualPaidTax > 0) {
       // 세부담상한액 = 전년도 실제 납부세액 × 상한율
       let taxBurdenCapAmount = Math.floor((propertyData.previousYear.actualPaidTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10;
-      // 세부담상한액에도 소유비율 적용 (비교를 위해)
-      let taxBurdenCapAmountWithOwnership = taxBurdenCapAmount * (propertyData.ownershipRatio / 100);
-      taxBurdenCapAmountWithOwnership = Math.floor(taxBurdenCapAmountWithOwnership / 10) * 10;
       
-      propertyTax = Math.min(basePropertyTaxWithOwnership, taxBurdenCapAmountWithOwnership);
+      // 소유비율이 적용된 기본 세액과 세부담상한액 중 더 적은 금액 선택
+      propertyTax = Math.min(basePropertyTaxWithOwnership, taxBurdenCapAmount);
     } else {
       propertyTax = basePropertyTaxWithOwnership;
     }
@@ -87,14 +85,13 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     
     if (propertyData.previousYear.actualPaidTax > 0) {
       const taxBurdenCapAmount = Math.floor((propertyData.previousYear.actualPaidTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10;
-      const taxBurdenCapAmountWithOwnership = Math.floor((taxBurdenCapAmount * (propertyData.ownershipRatio / 100)) / 10) * 10;
       calculationDetails += `\n\n3. 세부담상한제 적용`;
       calculationDetails += `\n• 세부담상한액: ${formatNumberWithCommas(propertyData.previousYear.actualPaidTax)}원 × ${propertyData.taxBurdenCapRate}% = ${formatNumberWithCommas(taxBurdenCapAmount)}원`;
-      calculationDetails += `\n• 세부담상한액(소유비율 적용): ${formatNumberWithCommas(taxBurdenCapAmount)}원 × ${propertyData.ownershipRatio}% = ${formatNumberWithCommas(taxBurdenCapAmountWithOwnership)}원`;
+      calculationDetails += `\n  (전년도 납부세액에는 이미 전년도 소유비율이 반영되어 있음)`;
       
       calculationDetails += `\n\n4. 세액 비교 및 선택`;
-      calculationDetails += `\n• 기본 세액(소유비율 적용): ${formatNumberWithCommas(basePropertyTaxWithOwnership)}원`;
-      calculationDetails += `\n• 세부담상한액(소유비율 적용): ${formatNumberWithCommas(taxBurdenCapAmountWithOwnership)}원`;
+      calculationDetails += `\n• 과세표준을 적용한 재산세(세율 적용): ${formatNumberWithCommas(basePropertyTaxWithOwnership)}원`;
+      calculationDetails += `\n• 세부담상한액(소유비율 적용): ${formatNumberWithCommas(taxBurdenCapAmount)}원`;
       calculationDetails += `\n• 최종 재산세: ${formatNumberWithCommas(propertyTax)}원 (더 적은 금액 적용)`;
     } else {
       calculationDetails += `\n\n3. 최종 재산세: ${formatNumberWithCommas(propertyTax)}원`;
@@ -171,24 +168,21 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     
     // 세부담상한제 적용 여부 확인
     if (propertyData.previousYear.actualPaidTax > 0) {
-      // 세부담상한액 = 전년도 실제 납부세액 × 상한율
+      // 세부담상한액 = 전년도 실제 납부세액 × 상한율 (전년도 납부세액에는 이미 소유비율이 반영되어 있음)
       let taxBurdenCapAmount = Math.floor((propertyData.previousYear.actualPaidTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10;
-      // 세부담상한액에도 소유비율 적용 (비교를 위해)
-      let taxBurdenCapAmountWithOwnership = taxBurdenCapAmount * (propertyData.ownershipRatio / 100);
-      taxBurdenCapAmountWithOwnership = Math.floor(taxBurdenCapAmountWithOwnership / 10) * 10;
       
-      console.log('세부담상한제 계산:', { basePropertyTaxWithOwnership, taxBurdenCapAmountWithOwnership });
+      console.log('세부담상한제 계산:', { basePropertyTaxWithOwnership, taxBurdenCapAmount });
       
-      // 소유비율 적용된 특례세율 적용액과 소유비율 적용된 세부담상한액 중 더 적은 금액 선택
-      propertyTax = Math.min(basePropertyTaxWithOwnership, taxBurdenCapAmountWithOwnership);
+      // 소유비율이 적용된 기본 세액과 세부담상한액 중 더 적은 금액 선택
+      propertyTax = Math.min(basePropertyTaxWithOwnership, taxBurdenCapAmount);
       
       calculationDetails += `\n\n3. 세부담상한제 적용`;
       calculationDetails += `\n• 세부담상한액: ${formatNumberWithCommas(propertyData.previousYear.actualPaidTax)}원 × ${propertyData.taxBurdenCapRate}% = ${formatNumberWithCommas(taxBurdenCapAmount)}원`;
-      calculationDetails += `\n• 세부담상한액(소유비율 적용): ${formatNumberWithCommas(taxBurdenCapAmount)}원 × ${propertyData.ownershipRatio}% = ${formatNumberWithCommas(taxBurdenCapAmountWithOwnership)}원`;
+      calculationDetails += `\n  (전년도 납부세액에는 이미 전년도 소유비율이 반영되어 있음)`;
       
       calculationDetails += `\n\n4. 세액 비교 및 선택`;
-      calculationDetails += `\n• 기본 세액(소유비율 적용): ${formatNumberWithCommas(basePropertyTaxWithOwnership)}원`;
-      calculationDetails += `\n• 세부담상한액(소유비율 적용): ${formatNumberWithCommas(taxBurdenCapAmountWithOwnership)}원`;
+      calculationDetails += `\n• 과세표준을 적용한 재산세(세율 적용): ${formatNumberWithCommas(basePropertyTaxWithOwnership)}원`;
+      calculationDetails += `\n• 세부담상한액(소유비율 적용): ${formatNumberWithCommas(taxBurdenCapAmount)}원`;
       calculationDetails += `\n• 최종 재산세: ${formatNumberWithCommas(propertyTax)}원 (더 적은 금액 적용)`;
     } else {
       propertyTax = basePropertyTaxWithOwnership;
@@ -210,7 +204,23 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
 
     // 지역자원시설세 계산 - 별도 과세표준이 있으면 사용, 없으면 주택 과세표준 사용
     const regionalResourceTaxStandard = propertyData.regionalResourceTaxStandard || taxableStandard;
-    regionalResourceTax = calculateRegionalResourceTax(regionalResourceTaxStandard);
+    // 소유비율 100% 기준 과세표준으로 역산
+    const fullOwnershipRegionalStandard = regionalResourceTaxStandard / (propertyData.ownershipRatio / 100);
+    // 100% 기준으로 세율 적용
+    const fullOwnershipRegionalTax = calculateRegionalResourceTax(fullOwnershipRegionalStandard);
+    // 소유비율 적용
+    regionalResourceTax = fullOwnershipRegionalTax * (propertyData.ownershipRatio / 100);
+    
+    // 1세대 1주택 특례 적용
+    if (propertyData.isSingleHousehold) {
+      regionalResourceTax = regionalResourceTax * 0.5;
+    }
+    
+    // 감면율 적용 (있는 경우)
+    if (propertyData.currentYearReductionRate > 0) {
+      regionalResourceTax = regionalResourceTax * (1 - propertyData.currentYearReductionRate / 100);
+    }
+    
     regionalResourceTax = Math.floor(regionalResourceTax / 10) * 10;
   }
   
@@ -224,13 +234,12 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
   // 도시지역분 세부담상한제 적용
   let urbanAreaTax = baseUrbanAreaTax;
   if (propertyData.previousYear.urbanAreaTax > 0) {
-    // 전년도 도시지역분 결정세액 + (전년도 도시지역분 결정세액 × 10%)
-    const urbanAreaTaxCap = Math.floor((propertyData.previousYear.urbanAreaTax * 1.1) / 10) * 10;
+    // 전년도 도시지역분 결정세액 × 세부담상한율
+    const urbanAreaTaxCap = Math.floor((propertyData.previousYear.urbanAreaTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10;
     urbanAreaTax = Math.min(baseUrbanAreaTax, urbanAreaTaxCap);
   }
   
-  // 지역자원시설세 소유비율 적용
-  regionalResourceTax = regionalResourceTax * (propertyData.ownershipRatio / 100);
+  // 지역자원시설세는 소유비율 적용하지 않음
   regionalResourceTax = Math.floor(regionalResourceTax / 10) * 10;
 
   // 지방교육세 계산 (재산세 본세의 20%)
