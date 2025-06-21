@@ -186,11 +186,11 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
       calculationDetails += `\n• 현년도 과세표준: ${formatNumberWithCommas(taxableStandard)}원`;
       calculationDetails += `\n• 과세표준 증가율: ${(((taxableStandard - propertyData.previousYear.taxableStandard) / propertyData.previousYear.taxableStandard) * 100).toFixed(2)}%`;
       calculationDetails += `\n• 세부담상한액: ${formatNumberWithCommas(propertyData.previousYear.actualPaidTax)}원 × ${propertyData.taxBurdenCapRate}% = ${formatNumberWithCommas(taxBurdenCapAmount)}원`;
-      calculationDetails += `\n  (전년도 납부세액에는 이미 전년도 소유비율이 반영되어 있음)`;
+      calculationDetails += `\n  (전년도 납부세액에는 이미 전년도 소유비율이 반영되어 있어 추가 소유비율 적용 없음)`;
       
       calculationDetails += `\n\n4. 세액 비교 및 선택`;
       calculationDetails += `\n• 과세표준을 적용한 재산세(소유비율 적용): ${formatNumberWithCommas(basePropertyTaxWithOwnership)}원`;
-      calculationDetails += `\n• 세부담상한액(소유비율 적용): ${formatNumberWithCommas(taxBurdenCapAmount)}원`;
+      calculationDetails += `\n• 세부담상한액: ${formatNumberWithCommas(taxBurdenCapAmount)}원`;
       calculationDetails += `\n• 최종 재산세: ${formatNumberWithCommas(propertyTax)}원 (더 적은 금액 적용)`;
     } else {
       propertyTax = basePropertyTaxWithOwnership;
