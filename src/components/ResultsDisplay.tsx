@@ -542,7 +542,7 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                        
                        return (
                          <div className="text-gray-700 space-y-1">
-                           <p>과세표준을 적용한 재산세(세율 적용): {formatCurrency(result.propertyTax)}원</p>
+                           <p>과세표준을 적용한 재산세: {formatCurrency(result.propertyTax)}원</p>
                            <p>세부담상한액(소유비율 적용): {formatCurrency(taxBurdenCapAmount)}원</p>
                            <p className="font-semibold">최종 선택: {formatCurrency(result.propertyTax)}원 (더 적은 금액 적용)</p>
                          </div>
