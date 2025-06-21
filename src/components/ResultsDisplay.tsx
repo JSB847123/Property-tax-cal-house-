@@ -485,10 +485,13 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                       : result.standardRateAmount;
                     const roundedBasePropertyTax = Math.floor(basePropertyTaxBeforeOwnership / 10) * 10;
                     
+                    // 소유비율 적용한 올바른 값 계산
+                    const propertyTaxWithOwnership = Math.floor((roundedBasePropertyTax * (propertyData.ownershipRatio / 100)) / 10) * 10;
+                    
                     return (
                       <div className="text-gray-700 space-y-1">
                         <p>최종 과세표준 × 세율 × 소유비율 = 최종 재산세</p>
-                        <p>{formatCurrency(result.taxableStandard)}원 × 세율 × {propertyData.ownershipRatio}% = {formatCurrency(result.propertyTax)}원</p>
+                        <p>{formatCurrency(result.taxableStandard)}원 × 세율 × {propertyData.ownershipRatio}% = {formatCurrency(propertyTaxWithOwnership)}원</p>
                         <p className="text-xs text-gray-500">※ 기본 세액(소유비율 적용 전): {formatCurrency(roundedBasePropertyTax)}원</p>
                       </div>
                     );
@@ -512,10 +515,17 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                      {(() => {
                        const taxBurdenCapAmount = Math.floor((propertyData.previousYear.actualPaidTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10;
                        
+                       // 올바른 기본 세액 사용 - specialRateAmount 또는 standardRateAmount 중 적용된 것 사용
+                       const basePropertyTaxBeforeOwnership = propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000 && propertyData.propertyType !== "다가구주택" 
+                         ? result.specialRateAmount 
+                         : result.standardRateAmount;
+                       const roundedBasePropertyTax = Math.floor(basePropertyTaxBeforeOwnership / 10) * 10;
+                       const propertyTaxWithOwnership = Math.floor((roundedBasePropertyTax * (propertyData.ownershipRatio / 100)) / 10) * 10;
+                       
                        return (
                          <div className="text-gray-700 space-y-1">
-                           <p>과세표준을 적용한 재산세(소유비율 적용): {formatCurrency(result.propertyTax)}원</p>
-                           <p>세부담상한액(소유비율 적용): {formatCurrency(taxBurdenCapAmount)}원</p>
+                           <p>과세표준을 적용한 재산세(소유비율 적용): {formatCurrency(propertyTaxWithOwnership)}원</p>
+                           <p>세부담상한액: {formatCurrency(taxBurdenCapAmount)}원</p>
                            <p className="font-semibold">최종 선택: {formatCurrency(result.propertyTax)}원 (더 적은 금액 적용)</p>
                          </div>
                        );
