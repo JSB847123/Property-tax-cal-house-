@@ -7,7 +7,8 @@ import {
   calculateMultiUnitPropertyTax,
   calculateRegionalResourceTax,
   calculateMultiUnitRegionalResourceTax,
-  calculatePreviousYearEquivalent
+  calculatePreviousYearEquivalent,
+  calculateSimplifiedPropertyTax
 } from "./taxCalculations";
 import { formatNumberWithCommas } from "./formatUtils";
 
@@ -34,7 +35,8 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     let unitCalculations: { unit: number; taxableStandard: number; exactTax: number }[] = [];
     
     propertyData.multiUnits.forEach((unit, index) => {
-      const exactTax = calculatePropertyTaxForStandard(unit.taxableStandard, propertyData.isSingleHousehold, unit.taxableStandard);
+      // 실제 계산은 간이세율 사용
+      const exactTax = calculateSimplifiedPropertyTax(unit.taxableStandard);
       totalTaxBeforeRounding += exactTax;
       unitCalculations.push({
         unit: index + 1,
@@ -118,8 +120,8 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     taxableStandardBeforeCap = taxableStandardData.beforeCap;
     taxableStandardCap = taxableStandardData.cap;
     
-    // 기본 특례세율 적용 세액 계산
-    let basePropertyTax = calculatePropertyTaxForStandard(taxableStandard, propertyData.isSingleHousehold, propertyData.publicPrice);
+    // 기본 간이세율 적용 세액 계산
+    let basePropertyTax = calculateSimplifiedPropertyTax(taxableStandard);
     basePropertyTax = Math.floor(basePropertyTax / 10) * 10;
     
     console.log('세부담상한제 적용 전 기본 세액:', basePropertyTax);
@@ -280,8 +282,8 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     baseSpecialRateAmount = basePropertyTaxWithOwnership / (propertyData.ownershipRatio / 100);
     baseStandardRateAmount = calculateMultiUnitPropertyTax(propertyData.multiUnits, false); // 소유비율 미적용
   } else {
-    // 일반 주택의 경우 - 소유비율 적용 전 값 계산
-    baseSpecialRateAmount = calculatePropertyTaxForStandard(taxableStandard, propertyData.isSingleHousehold, propertyData.publicPrice);
+    // 일반 주택의 경우 - 소유비율 적용 전 값 계산 (간이세율 사용)
+    baseSpecialRateAmount = calculateSimplifiedPropertyTax(taxableStandard);
     baseStandardRateAmount = calculateStandardPropertyTax(taxableStandard);
   }
   

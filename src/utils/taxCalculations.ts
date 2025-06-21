@@ -50,46 +50,27 @@ export const calculateTaxableStandardWithCap = (
   };
 };
 
-// 재산세 본세 계산 (일반 주택)
+// 재산세 본세 계산 (일반 주택) - 실제 계산은 간이세율 사용
 export const calculatePropertyTaxForStandard = (taxableStandard: number, isSingleHousehold: boolean, publicPrice: number): number => {
   console.log('calculatePropertyTaxForStandard 호출:', { taxableStandard, isSingleHousehold, publicPrice });
   
-  if (isSingleHousehold && publicPrice <= 900000000) {
-    if (taxableStandard <= 60000000) {
-      const result = taxableStandard * 0.0005;
-      console.log('1세대 1주택자 특례세율 - 6천만원 이하:', result);
-      return result;
-    } else if (taxableStandard <= 150000000) {
-      const result = taxableStandard * 0.001 - 30000;
-      console.log('1세대 1주택자 특례세율 - 6천만원 초과 1억5천만원 이하:', result);
-      return result;
-    } else if (taxableStandard <= 300000000) {
-      const result = taxableStandard * 0.002 - 180000;
-      console.log('1세대 1주택자 특례세율 - 1억5천만원 초과 3억원 이하:', result);
-      return result;
-    } else {
-      const result = taxableStandard * 0.0035 - 630000;
-      console.log('1세대 1주택자 특례세율 - 3억원 초과:', result);
-      return result;
-    }
-  }
-  
-  if (taxableStandard <= 6000000) {
-    const result = taxableStandard * 0.001;
-    console.log('표준세율 - 600만원 이하:', result);
-    return result;
-  } else if (taxableStandard <= 150000000) {
-    const result = taxableStandard * 0.0015 - 30000;
-    console.log('표준세율 - 600만원 초과 1억5천만원 이하:', { taxableStandard, calculation: `${taxableStandard} * 0.0015 - 30000 = ${result}` });
-    return result;
+  // 실제 계산은 간이세율 사용
+  const result = calculateSimplifiedPropertyTax(taxableStandard);
+  console.log('간이세율 적용 결과:', { taxableStandard, result });
+  return result;
+};
+
+// 간이세율 계산
+export const calculateSimplifiedPropertyTax = (taxableStandard: number): number => {
+  if (taxableStandard <= 150000000) {
+    // 1억5천만원 이하: 과세표준 × 0.15% - 30,000원
+    return taxableStandard * 0.0015 - 30000;
   } else if (taxableStandard <= 300000000) {
-    const result = taxableStandard * 0.0025 - 180000;
-    console.log('표준세율 - 1억5천만원 초과 3억원 이하:', result);
-    return result;
+    // 1억5천만원 초과 3억원 이하: 과세표준 × 0.25% - 180,000원
+    return taxableStandard * 0.0025 - 180000;
   } else {
-    const result = taxableStandard * 0.004 - 630000;
-    console.log('표준세율 - 3억원 초과:', { taxableStandard, calculation: `${taxableStandard} * 0.004 - 630000 = ${result}` });
-    return result;
+    // 3억원 초과: 과세표준 × 0.4% - 630,000원
+    return taxableStandard * 0.004 - 630000;
   }
 };
 
@@ -108,10 +89,11 @@ export const calculateStandardPropertyTax = (taxableStandard: number): number =>
   }
 };
 
-// 다가구주택 재산세 계산
+// 다가구주택 재산세 계산 - 실제 계산은 간이세율 사용
 export const calculateMultiUnitPropertyTax = (multiUnits: MultiUnitData[], isSingleHousehold: boolean): number => {
   const totalTax = multiUnits.reduce((total, unit) => {
-    const unitTax = calculatePropertyTaxForStandard(unit.taxableStandard, isSingleHousehold, unit.taxableStandard);
+    // 실제 계산은 간이세율 사용
+    const unitTax = calculateSimplifiedPropertyTax(unit.taxableStandard);
     return total + unitTax;
   }, 0);
   

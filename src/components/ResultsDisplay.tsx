@@ -76,30 +76,18 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
     
     let taxRateDescription = "";
     
-    if (propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000 && propertyData.propertyType !== "다가구주택") {
-      explanation += "- 1세대 1주택자 특례세율 적용\n";
-      // 1세대 1주택자 특례세율 구간별 설명
-      if (result.taxableStandard <= 60000000) {
-        taxRateDescription = "과세표준 6천만원 이하: 0.5/1,000";
-      } else if (result.taxableStandard <= 150000000) {
-        taxRateDescription = "과세표준에 구간에 따른 세율 (30,000원 + 6천만원 초과금액의 1.0/1,000)";
-      } else if (result.taxableStandard <= 300000000) {
-        taxRateDescription = "과세표준에 구간에 따른 세율 (180,000원 + 1억5천만원 초과금액의 2.0/1,000)";
-      } else {
-        taxRateDescription = "과세표준에 구간에 따른 세율 (630,000원 + 3억원 초과금액의 3.5/1,000)";
-      }
+    // 표시는 항상 표준세율로 표기
+    if (result.taxableStandard <= 6000000) {
+      taxRateDescription = "과세표준 600만원 이하: 1.0/1,000";
+    } else if (result.taxableStandard <= 150000000) {
+      taxRateDescription = "과세표준에 구간에 따른 세율 (6,000원 + 600만원 초과금액의 1.5/1,000)";
+    } else if (result.taxableStandard <= 300000000) {
+      taxRateDescription = "과세표준에 구간에 따른 세율 (216,000원 + 1억5천만원 초과금액의 2.5/1,000)";
     } else {
-      // 표준세율 구간별 설명
-      if (result.taxableStandard <= 6000000) {
-        taxRateDescription = "과세표준 600만원 이하: 1.0/1,000";
-      } else if (result.taxableStandard <= 150000000) {
-        taxRateDescription = "과세표준에 구간에 따른 세율 (6,000원 + 600만원 초과금액의 1.5/1,000)";
-      } else if (result.taxableStandard <= 300000000) {
-        taxRateDescription = "과세표준에 구간에 따른 세율 (216,000원 + 1억5천만원 초과금액의 2.5/1,000)";
-      } else {
-        taxRateDescription = "과세표준 300,000,000원 초과 표준세율: 57만원＋3억원 초과금액의 1,000분의 4, 간이세율: 과세표준액 × 0.4% - 630,000원";
-      }
+      taxRateDescription = "과세표준 3억원 초과: 57만원 + 3억원 초과금액의 4/1,000";
     }
+    
+    explanation += `- 표준세율 적용: ${taxRateDescription}\n`;
     
     // 올바른 기본 세액 사용 - specialRateAmount 또는 standardRateAmount 중 적용된 것 사용
     const baseTaxBeforeOwnership = propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000 && propertyData.propertyType !== "다가구주택" 
@@ -467,39 +455,23 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                   {(() => {
                     let taxRateDescription = "";
                     
-                    if (propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000 && propertyData.propertyType !== "다가구주택") {
-                      if (result.taxableStandard <= 60000000) {
-                        taxRateDescription = "과세표준 6천만원 이하: 0.5/1,000";
-                      } else if (result.taxableStandard <= 150000000) {
-                        taxRateDescription = "과세표준에 구간에 따른 세율 (30,000원 + 6천만원 초과금액의 1.0/1,000)";
-                      } else if (result.taxableStandard <= 300000000) {
-                        taxRateDescription = "과세표준에 구간에 따른 세율 (180,000원 + 1억5천만원 초과금액의 2.0/1,000)";
-                      } else {
-                        taxRateDescription = "과세표준에 구간에 따른 세율 (630,000원 + 3억원 초과금액의 3.5/1,000)";
-                      }
-                      return (
-                        <div className="text-gray-700">
-                          <p className="font-semibold mb-1">1세대 1주택자 특례세율 적용</p>
-                          <p className="text-sm">{taxRateDescription}</p>
-                        </div>
-                      );
+                    // 표시는 항상 표준세율로 표기
+                    if (result.taxableStandard <= 6000000) {
+                      taxRateDescription = "과세표준 600만원 이하: 1.0/1,000";
+                    } else if (result.taxableStandard <= 150000000) {
+                      taxRateDescription = "과세표준에 구간에 따른 세율 (6,000원 + 600만원 초과금액의 1.5/1,000)";
+                    } else if (result.taxableStandard <= 300000000) {
+                      taxRateDescription = "과세표준에 구간에 따른 세율 (216,000원 + 1억5천만원 초과금액의 2.5/1,000)";
                     } else {
-                      if (result.taxableStandard <= 6000000) {
-                        taxRateDescription = "과세표준 600만원 이하: 1.0/1,000";
-                      } else if (result.taxableStandard <= 150000000) {
-                        taxRateDescription = "과세표준에 구간에 따른 세율 (6,000원 + 600만원 초과금액의 1.5/1,000)";
-                      } else if (result.taxableStandard <= 300000000) {
-                        taxRateDescription = "과세표준에 구간에 따른 세율 (216,000원 + 1억5천만원 초과금액의 2.5/1,000)";
-                      } else {
-                        taxRateDescription = "과세표준 300,000,000원 초과 표준세율: 57만원＋3억원 초과금액의 1,000분의 4, 간이세율: 과세표준액 × 0.4% - 630,000원";
-                      }
-                      return (
-                        <div className="text-gray-700">
-                          <p className="font-semibold mb-1">표준세율 적용</p>
-                          <p className="text-sm">{taxRateDescription}</p>
-                        </div>
-                      );
+                      taxRateDescription = "과세표준 3억원 초과: 57만원 + 3억원 초과금액의 4/1,000";
                     }
+                    
+                    return (
+                      <div className="text-gray-700">
+                        <p className="font-semibold mb-1">표준세율 적용</p>
+                        <p className="text-sm">{taxRateDescription}</p>
+                      </div>
+                    );
                   })()}
                 </div>
 
