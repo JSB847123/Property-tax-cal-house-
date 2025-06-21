@@ -166,17 +166,22 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     
     calculationDetails += `\n\n2. 과세표준을 적용한 계산`;
     calculationDetails += `\n최종 과세표준 × 세율 × 소유비율 = 최종 재산세 본세`;
-    calculationDetails += `\n${formatNumberWithCommas(taxableStandard)}원 × 세율 × ${propertyData.ownershipRatio}% = ${formatNumberWithCommas(basePropertyTaxWithOwnership)}원`;
+    
+    // 간이세율로 직접 계산한 값 사용 (세부담상한제 적용 전 원래 값)
+    const displayPropertyTax = basePropertyTax * (propertyData.ownershipRatio / 100);
+    const displayPropertyTaxRounded = Math.floor(displayPropertyTax / 10) * 10;
+    
+    calculationDetails += `\n${formatNumberWithCommas(taxableStandard)}원 × 세율 × ${propertyData.ownershipRatio}% = ${formatNumberWithCommas(displayPropertyTaxRounded)}원`;
     
     // 간이세율 구간별 상세 계산 표시
     if (taxableStandard <= 60000000) {
-      calculationDetails += `\n${formatNumberWithCommas(taxableStandard)}원 × 6천만원 이하 1,000분의 1 = ${formatNumberWithCommas(basePropertyTaxWithOwnership)}원`;
+      calculationDetails += `\n${formatNumberWithCommas(taxableStandard)}원 × 6천만원 이하 1,000분의 1 = ${formatNumberWithCommas(displayPropertyTaxRounded)}원`;
     } else if (taxableStandard <= 150000000) {
-      calculationDetails += `\n${formatNumberWithCommas(taxableStandard)}원 × 6천만원＋6천만원 초과금액의 1,000분의 1.5 = ${formatNumberWithCommas(basePropertyTaxWithOwnership)}원`;
+      calculationDetails += `\n${formatNumberWithCommas(taxableStandard)}원 × 6천만원＋6천만원 초과금액의 1,000분의 1.5 = ${formatNumberWithCommas(displayPropertyTaxRounded)}원`;
     } else if (taxableStandard <= 300000000) {
-      calculationDetails += `\n${formatNumberWithCommas(taxableStandard)}원 × 6천만원＋6천만원 초과 1억5천만원 이하 1,000분의 1.5＋1억5천만원 초과금액의 1,000분의 2.5 = ${formatNumberWithCommas(basePropertyTaxWithOwnership)}원`;
+      calculationDetails += `\n${formatNumberWithCommas(taxableStandard)}원 × 6천만원＋6천만원 초과 1억5천만원 이하 1,000분의 1.5＋1억5천만원 초과금액의 1,000분의 2.5 = ${formatNumberWithCommas(displayPropertyTaxRounded)}원`;
     } else {
-      calculationDetails += `\n${formatNumberWithCommas(taxableStandard)}원 × 6천만원＋6천만원 초과 1억5천만원 이하 1,000분의 1.5＋1억5천만원 초과 3억원 이하 1,000분의 2.5＋3억원 초과금액의 1,000분의 4 = ${formatNumberWithCommas(basePropertyTaxWithOwnership)}원`;
+      calculationDetails += `\n${formatNumberWithCommas(taxableStandard)}원 × 6천만원＋6천만원 초과 1억5천만원 이하 1,000분의 1.5＋1억5천만원 초과 3억원 이하 1,000분의 2.5＋3억원 초과금액의 1,000분의 4 = ${formatNumberWithCommas(displayPropertyTaxRounded)}원`;
     }
     
     // 세부담상한제 적용 전 기본 세액 저장 (표시용) - 세부담상한제 적용 후에도 원래 값 유지
@@ -195,7 +200,7 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
       calculationDetails += `\n  (전년도 납부세액에는 이미 전년도 소유비율이 반영되어 있어 추가 소유비율 적용 없음)`;
       
       calculationDetails += `\n\n4. 세액 비교 및 선택`;
-      calculationDetails += `\n• 과세표준을 적용한 재산세(소유비율 적용): ${formatNumberWithCommas(originalBasePropertyTaxWithOwnership)}원`;
+      calculationDetails += `\n• 과세표준을 적용한 재산세(소유비율 적용): ${formatNumberWithCommas(displayPropertyTaxRounded)}원`;
       calculationDetails += `\n• 세부담상한액: ${formatNumberWithCommas(taxBurdenCapAmount)}원`;
       calculationDetails += `\n• 최종 재산세: ${formatNumberWithCommas(propertyTax)}원 (더 적은 금액 적용)`;
     } else {
