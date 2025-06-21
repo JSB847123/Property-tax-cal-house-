@@ -62,12 +62,15 @@ export const calculatePropertyTaxForStandard = (taxableStandard: number, isSingl
 
 // 간이세율 계산
 export const calculateSimplifiedPropertyTax = (taxableStandard: number): number => {
-  if (taxableStandard <= 150000000) {
-    // 1억5천만원 이하: 과세표준 × 0.15% - 30,000원
+  if (taxableStandard <= 60000000) {
+    // 6천만원 이하: 과세표준 × 0.1% 
+    return taxableStandard * 0.001;
+  } else if (taxableStandard <= 150000000) {
+    // 6천만원 초과 1억5천만원 이하: 과세표준 × 0.15% - 30,000원
     return taxableStandard * 0.0015 - 30000;
   } else if (taxableStandard <= 300000000) {
-    // 1억5천만원 초과 3억원 이하: 과세표준 × 0.25% - 180,000원
-    return taxableStandard * 0.0025 - 180000;
+    // 1억5천만원 초과 3억원 이하: 과세표준 × 0.25% - 165,000원
+    return taxableStandard * 0.0025 - 165000;
   } else {
     // 3억원 초과: 과세표준 × 0.4% - 630,000원
     return taxableStandard * 0.004 - 630000;
