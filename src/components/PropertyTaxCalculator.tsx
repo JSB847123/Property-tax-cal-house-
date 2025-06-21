@@ -27,7 +27,7 @@ const PropertyTaxCalculator = () => {
     reductionType: "감면 없음",
     rentalHousingArea: 0,
     currentYearReductionRate: 0,
-    taxBurdenCapRate: 110,
+    taxBurdenCapRate: 105,
     taxStandardCapRate: 5,
     previousYear: {
       publicPrice: 0,
@@ -48,6 +48,17 @@ const PropertyTaxCalculator = () => {
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [isSingleHouseholdSelected, setIsSingleHouseholdSelected] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
+
+  // 주택공시가격에 따른 세부담상한율 자동 계산
+  const calculateTaxBurdenCapRate = (publicPrice: number): number => {
+    if (publicPrice <= 300000000) {
+      return 105;
+    } else if (publicPrice <= 600000000) {
+      return 110;
+    } else {
+      return 130;
+    }
+  };
 
   const resetCalculator = () => {
     setPropertyData(initialPropertyData);
@@ -208,15 +219,38 @@ const PropertyTaxCalculator = () => {
             </div>
           </div>
 
-          {/* 다가구주택 구별 과세표준 입력 */}
+          {/* 다가구주택 공시가격 및 구별 과세표준 입력 */}
           {propertyData.propertyType === "다가구주택" && (
-            <MultiUnitInputs
-              units={propertyData.multiUnits}
-              onAdd={addMultiUnit}
-              onRemove={removeMultiUnit}
-              onUpdate={updateMultiUnit}
-              title="구별 과세표준 및 지역자원시설세 과세표준"
-            />
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="publicPrice" className="text-sm font-medium text-gray-700">
+                  주택공시가격 (원)
+                </Label>
+                <Input
+                  id="publicPrice"
+                  type="text"
+                  placeholder="예: 300,000,000"
+                  value={propertyData.publicPrice ? formatNumberWithCommas(propertyData.publicPrice) : ""}
+                  onChange={(e) => {
+                    const publicPrice = parseNumberFromInput(e.target.value);
+                    const taxBurdenCapRate = calculateTaxBurdenCapRate(publicPrice);
+                    setPropertyData(prev => ({
+                      ...prev,
+                      publicPrice: publicPrice,
+                      taxBurdenCapRate: taxBurdenCapRate
+                    }));
+                  }}
+                  className="text-lg"
+                />
+              </div>
+              <MultiUnitInputs
+                units={propertyData.multiUnits}
+                onAdd={addMultiUnit}
+                onRemove={removeMultiUnit}
+                onUpdate={updateMultiUnit}
+                title="구별 과세표준 및 지역자원시설세 과세표준"
+              />
+            </div>
           )}
 
           {/* 일반 주택 공시가격 입력 */}
@@ -230,10 +264,15 @@ const PropertyTaxCalculator = () => {
                 type="text"
                 placeholder="예: 300,000,000"
                 value={propertyData.publicPrice ? formatNumberWithCommas(propertyData.publicPrice) : ""}
-                onChange={(e) => setPropertyData(prev => ({
-                  ...prev,
-                  publicPrice: parseNumberFromInput(e.target.value)
-                }))}
+                onChange={(e) => {
+                  const publicPrice = parseNumberFromInput(e.target.value);
+                  const taxBurdenCapRate = calculateTaxBurdenCapRate(publicPrice);
+                  setPropertyData(prev => ({
+                    ...prev,
+                    publicPrice: publicPrice,
+                    taxBurdenCapRate: taxBurdenCapRate
+                  }));
+                }}
                 className="text-lg"
               />
             </div>
@@ -387,13 +426,15 @@ const PropertyTaxCalculator = () => {
                 <Label className="text-sm font-medium text-gray-700">세부담상한율 (%)</Label>
                 <Input
                   type="number"
-                  min="100"
                   value={propertyData.taxBurdenCapRate || ""}
-                  onChange={(e) => setPropertyData(prev => ({
-                    ...prev,
-                    taxBurdenCapRate: Number(e.target.value)
-                  }))}
+                  readOnly
+                  className="bg-gray-50 text-gray-700"
                 />
+                <p className="text-xs text-gray-500">
+                  주택공시가격에 따라 자동 계산됩니다
+                  <br />
+                  (3억원 이하: 105%, 3억원 초과 6억원 이하: 110%, 6억원 초과: 130%)
+                </p>
               </div>
 
               <div className="space-y-2">
