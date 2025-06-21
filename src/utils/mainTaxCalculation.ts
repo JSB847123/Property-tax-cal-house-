@@ -50,14 +50,8 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     basePropertyTaxWithOwnership = basePropertyTax * (propertyData.ownershipRatio / 100);
     basePropertyTaxWithOwnership = Math.floor(basePropertyTaxWithOwnership / 10) * 10;
     
-    // 세부담상한제 적용 여부 확인 - 과세표준 증가율이 5% 이상일 때만 적용
-    const previousYearTotalTaxableStandard = propertyData.previousYear.multiUnits.reduce((sum, unit) => sum + unit.taxableStandard, 0);
-    const standardIncreaseRate = previousYearTotalTaxableStandard > 0 
-      ? ((taxableStandard - previousYearTotalTaxableStandard) / previousYearTotalTaxableStandard) * 100
-      : 0;
-    const shouldApplyTaxBurdenCap = propertyData.previousYear.actualPaidTax > 0 && standardIncreaseRate >= 5;
-    
-    if (shouldApplyTaxBurdenCap) {
+    // 세부담상한제 적용
+    if (propertyData.previousYear.actualPaidTax > 0) {
       // 세부담상한액 = 전년도 실제 납부세액 × 상한율
       let taxBurdenCapAmount = Math.floor((propertyData.previousYear.actualPaidTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10;
       
@@ -88,12 +82,9 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     calculationDetails += `\n\n2. 과세표준을 적용한 계산: 최종 과세표준 × 세율 × 소유비율`;
     calculationDetails += `\n   - 계산: 각 구별 세액 합계 × ${propertyData.ownershipRatio}% = ${formatNumberWithCommas(basePropertyTaxWithOwnership)}원`;
     
-    if (shouldApplyTaxBurdenCap) {
+    if (propertyData.previousYear.actualPaidTax > 0) {
       const taxBurdenCapAmount = Math.floor((propertyData.previousYear.actualPaidTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10;
-      calculationDetails += `\n\n3. 세부담상한제 적용 (과세표준 증가 시)`;
-      calculationDetails += `\n• 전년도 과세표준: ${formatNumberWithCommas(previousYearTotalTaxableStandard)}원`;
-      calculationDetails += `\n• 현년도 과세표준: ${formatNumberWithCommas(taxableStandard)}원`;
-      calculationDetails += `\n• 과세표준 증가율: ${standardIncreaseRate.toFixed(2)}%`;
+      calculationDetails += `\n\n3. 세부담상한제 적용`;
       calculationDetails += `\n• 세부담상한액: ${formatNumberWithCommas(propertyData.previousYear.actualPaidTax)}원 × ${propertyData.taxBurdenCapRate}% = ${formatNumberWithCommas(taxBurdenCapAmount)}원`;
       calculationDetails += `\n  (전년도 납부세액에는 이미 전년도 소유비율이 반영되어 있어 추가 소유비율 적용 없음)`;
       
@@ -102,13 +93,7 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
       calculationDetails += `\n• 세부담상한액: ${formatNumberWithCommas(taxBurdenCapAmount)}원`;
       calculationDetails += `\n• 최종 재산세: ${formatNumberWithCommas(propertyTax)}원 (더 적은 금액 적용)`;
     } else {
-      if (propertyData.previousYear.actualPaidTax > 0 && standardIncreaseRate < 5) {
-        calculationDetails += `\n\n3. 세부담상한제 미적용 (과세표준 증가율 부족)`;
-        calculationDetails += `\n• 전년도 과세표준: ${formatNumberWithCommas(previousYearTotalTaxableStandard)}원`;
-        calculationDetails += `\n• 현년도 과세표준: ${formatNumberWithCommas(taxableStandard)}원`;
-        calculationDetails += `\n• 과세표준 증가율: ${standardIncreaseRate.toFixed(2)}% (5% 미만으로 세부담상한제 미적용)`;
-      }
-      calculationDetails += `\n\n${propertyData.previousYear.actualPaidTax > 0 && standardIncreaseRate < 5 ? '4' : '3'}. 최종 재산세: ${formatNumberWithCommas(propertyTax)}원`;
+      calculationDetails += `\n\n3. 최종 재산세: ${formatNumberWithCommas(propertyTax)}원`;
     }
     
     // 분기별 세액 설명 추가 (다가구주택)
@@ -180,25 +165,15 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     calculationDetails += `\n\n2. 과세표준을 적용한 계산: 최종 과세표준 ${formatNumberWithCommas(taxableStandard)}원 × 세율 × 소유비율`;
     calculationDetails += `\n   - 계산: ${formatNumberWithCommas(taxableStandard)}원 × 세율 × ${propertyData.ownershipRatio}% = ${formatNumberWithCommas(basePropertyTaxWithOwnership)}원`;
     
-    // 세부담상한제 적용 여부 확인 - 과세표준 증가율이 5% 이상일 때만 적용
-    const standardIncreaseRate = propertyData.previousYear.taxableStandard > 0 
-      ? ((taxableStandard - propertyData.previousYear.taxableStandard) / propertyData.previousYear.taxableStandard) * 100
-      : 0;
-    const shouldApplyTaxBurdenCap = propertyData.previousYear.actualPaidTax > 0 && standardIncreaseRate >= 5;
-    
-    if (shouldApplyTaxBurdenCap) {
-      // 세부담상한액 = 전년도 실제 납부세액 × 상한율 (전년도 납부세액에는 이미 소유비율이 반영되어 있음)
+    // 세부담상한제 적용
+    if (propertyData.previousYear.actualPaidTax > 0) {
+      // 세부담상한액 = 전년도 실제 납부세액 × 상한율
       let taxBurdenCapAmount = Math.floor((propertyData.previousYear.actualPaidTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10;
-      
-      console.log('세부담상한제 계산:', { basePropertyTaxWithOwnership, taxBurdenCapAmount });
       
       // 소유비율이 적용된 기본 세액과 세부담상한액 중 더 적은 금액 선택
       propertyTax = Math.min(basePropertyTaxWithOwnership, taxBurdenCapAmount);
       
-      calculationDetails += `\n\n3. 세부담상한제 적용 (과세표준 증가 시)`;
-      calculationDetails += `\n• 전년도 과세표준: ${formatNumberWithCommas(propertyData.previousYear.taxableStandard)}원`;
-      calculationDetails += `\n• 현년도 과세표준: ${formatNumberWithCommas(taxableStandard)}원`;
-      calculationDetails += `\n• 과세표준 증가율: ${(((taxableStandard - propertyData.previousYear.taxableStandard) / propertyData.previousYear.taxableStandard) * 100).toFixed(2)}%`;
+      calculationDetails += `\n\n3. 세부담상한제 적용`;
       calculationDetails += `\n• 세부담상한액: ${formatNumberWithCommas(propertyData.previousYear.actualPaidTax)}원 × ${propertyData.taxBurdenCapRate}% = ${formatNumberWithCommas(taxBurdenCapAmount)}원`;
       calculationDetails += `\n  (전년도 납부세액에는 이미 전년도 소유비율이 반영되어 있어 추가 소유비율 적용 없음)`;
       
@@ -208,13 +183,7 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
       calculationDetails += `\n• 최종 재산세: ${formatNumberWithCommas(propertyTax)}원 (더 적은 금액 적용)`;
     } else {
       propertyTax = basePropertyTaxWithOwnership;
-      if (propertyData.previousYear.actualPaidTax > 0 && standardIncreaseRate < 5) {
-        calculationDetails += `\n\n3. 세부담상한제 미적용 (과세표준 증가율 부족)`;
-        calculationDetails += `\n• 전년도 과세표준: ${formatNumberWithCommas(propertyData.previousYear.taxableStandard)}원`;
-        calculationDetails += `\n• 현년도 과세표준: ${formatNumberWithCommas(taxableStandard)}원`;
-        calculationDetails += `\n• 과세표준 증가율: ${standardIncreaseRate.toFixed(2)}% (5% 미만으로 세부담상한제 미적용)`;
-      }
-      calculationDetails += `\n\n${propertyData.previousYear.actualPaidTax > 0 && standardIncreaseRate < 5 ? '4' : '3'}. 최종 재산세: ${formatNumberWithCommas(propertyTax)}원`;
+      calculationDetails += `\n\n3. 최종 재산세: ${formatNumberWithCommas(propertyTax)}원`;
     }
     
     if (propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000) {
