@@ -164,8 +164,20 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
       calculationDetails += `\n   - 누진공제: 180,000원`;
     }
     
-    calculationDetails += `\n\n2. 과세표준을 적용한 계산: 최종 과세표준 ${formatNumberWithCommas(taxableStandard)}원 × 세율 × 소유비율`;
-    calculationDetails += `\n   - 계산: ${formatNumberWithCommas(taxableStandard)}원 × 세율 × ${propertyData.ownershipRatio}% = ${formatNumberWithCommas(basePropertyTaxWithOwnership)}원`;
+    calculationDetails += `\n\n2. 과세표준을 적용한 계산`;
+    calculationDetails += `\n최종 과세표준 × 세율 × 소유비율 = 최종 재산세 본세`;
+    calculationDetails += `\n${formatNumberWithCommas(taxableStandard)}원 × 세율 × ${propertyData.ownershipRatio}% = ${formatNumberWithCommas(basePropertyTaxWithOwnership)}원`;
+    
+    // 간이세율 구간별 상세 계산 표시
+    if (taxableStandard <= 60000000) {
+      calculationDetails += `\n${formatNumberWithCommas(taxableStandard)}원 × 6천만원 이하 1,000분의 1 = ${formatNumberWithCommas(basePropertyTaxWithOwnership)}원`;
+    } else if (taxableStandard <= 150000000) {
+      calculationDetails += `\n${formatNumberWithCommas(taxableStandard)}원 × 6천만원＋6천만원 초과금액의 1,000분의 1.5 = ${formatNumberWithCommas(basePropertyTaxWithOwnership)}원`;
+    } else if (taxableStandard <= 300000000) {
+      calculationDetails += `\n${formatNumberWithCommas(taxableStandard)}원 × 6천만원＋6천만원 초과 1억5천만원 이하 1,000분의 1.5＋1억5천만원 초과금액의 1,000분의 2.5 = ${formatNumberWithCommas(basePropertyTaxWithOwnership)}원`;
+    } else {
+      calculationDetails += `\n${formatNumberWithCommas(taxableStandard)}원 × 6천만원＋6천만원 초과 1억5천만원 이하 1,000분의 1.5＋1억5천만원 초과 3억원 이하 1,000분의 2.5＋3억원 초과금액의 1,000분의 4 = ${formatNumberWithCommas(basePropertyTaxWithOwnership)}원`;
+    }
     
     // 세부담상한제 적용
     if (propertyData.previousYear.actualPaidTax > 0) {
