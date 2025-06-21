@@ -505,7 +505,7 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
 
                 {/* 계산 과정 */}
                 <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                  <span className="text-sm text-gray-600 block mb-2">세율 적용 계산</span>
+                  <span className="text-sm text-gray-600 block mb-2">과세표준을 적용한 계산</span>
                   {(() => {
                     // 올바른 기본 세액 사용 - specialRateAmount 또는 standardRateAmount 중 적용된 것 사용
                     const basePropertyTaxBeforeOwnership = propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000 && propertyData.propertyType !== "다가구주택" 

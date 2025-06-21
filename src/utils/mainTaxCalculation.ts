@@ -80,7 +80,7 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     calculationDetails += `\n   - 각 구별 세액 합계: ${totalTaxBeforeRounding.toFixed(3)}원`;
     calculationDetails += `\n   - 10원 단위 내림: ${formatNumberWithCommas(basePropertyTax)}원`;
     
-    calculationDetails += `\n\n2. 세율 적용 계산: 최종 과세표준 × 세율 × 소유비율`;
+    calculationDetails += `\n\n2. 과세표준을 적용한 계산: 최종 과세표준 × 세율 × 소유비율`;
     calculationDetails += `\n   - 계산: 각 구별 세액 합계 × ${propertyData.ownershipRatio}% = ${formatNumberWithCommas(basePropertyTaxWithOwnership)}원`;
     
     if (propertyData.previousYear.actualPaidTax > 0) {
@@ -163,7 +163,7 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
       calculationDetails += `\n   - 누진공제: 180,000원`;
     }
     
-    calculationDetails += `\n\n2. 세율 적용 계산: 최종 과세표준 ${formatNumberWithCommas(taxableStandard)}원 × 세율 × 소유비율`;
+    calculationDetails += `\n\n2. 과세표준을 적용한 계산: 최종 과세표준 ${formatNumberWithCommas(taxableStandard)}원 × 세율 × 소유비율`;
     calculationDetails += `\n   - 계산: ${formatNumberWithCommas(taxableStandard)}원 × 세율 × ${propertyData.ownershipRatio}% = ${formatNumberWithCommas(basePropertyTaxWithOwnership)}원`;
     
     // 세부담상한제 적용 여부 확인
