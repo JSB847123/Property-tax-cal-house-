@@ -21,6 +21,7 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
   let propertyTax = 0;
   let standardPropertyTax = 0;
   let regionalResourceTax = 0;
+  let urbanAreaTax = 0;
   let calculationDetails = "";
   let basePropertyTaxWithOwnership = 0;
 
@@ -150,7 +151,12 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     
     // 분기별 세액 설명 추가 (다가구주택)
     const multiUnitTotalTaxableStandard = propertyData.multiUnits.reduce((sum, unit) => sum + unit.taxableStandard, 0);
-    const multiUnitUrbanAreaTax = Math.floor((multiUnitTotalTaxableStandard * 0.0014 * (propertyData.ownershipRatio / 100)) / 10) * 10;
+    let multiUnitUrbanAreaTax = Math.floor((multiUnitTotalTaxableStandard * 0.0014 * (propertyData.ownershipRatio / 100)) / 10) * 10;
+    
+    // 임대주택 감면율 적용 (다가구주택)
+    if (propertyData.reductionType === "임대주택" && propertyData.currentYearReductionRate > 0) {
+      multiUnitUrbanAreaTax = Math.floor((multiUnitUrbanAreaTax * (1 - propertyData.currentYearReductionRate / 100)) / 10) * 10;
+    }
     const multiUnitLocalEducationTax = Math.floor((propertyTax * 0.2) / 10) * 10;
     const multiUnitPropertyTaxTotal = propertyTax + multiUnitUrbanAreaTax + multiUnitLocalEducationTax;
     
@@ -163,6 +169,14 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     calculationDetails += `\n• 상반기 납부액: ${formatNumberWithCommas(multiUnitHalfYearTax)}원 (각 세목별 50%씩 합산)`;
     calculationDetails += `\n• 하반기 납부액: ${formatNumberWithCommas(multiUnitHalfYearTax)}원 + 지역자원시설세 50%`;
     calculationDetails += `\n• 연간 총액: ${formatNumberWithCommas(multiUnitPropertyTaxTotal)}원 + 지역자원시설세`;
+    
+    // 다가구주택의 도시지역분 세부담상한제 적용
+    urbanAreaTax = multiUnitUrbanAreaTax;
+    if (propertyData.previousYear.urbanAreaTax > 0) {
+      // 전년도 도시지역분 결정세액 × 세부담상한율
+      const urbanAreaTaxCap = Math.floor((propertyData.previousYear.urbanAreaTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10;
+      urbanAreaTax = Math.min(multiUnitUrbanAreaTax, urbanAreaTaxCap);
+    }
   } else {
     // 일반 주택의 경우 과표상한제 적용
     const taxableStandardData = calculateTaxableStandardWithCap(
@@ -302,18 +316,6 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     if (propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000) {
       calculationDetails += "\n\n※ 1세대 1주택자 특례세율 적용";
     }
-    
-    // 분기별 세액 설명 추가
-    const propertyTaxTotalForDetails = propertyTax + Math.floor((taxableStandard * 0.0014 * (propertyData.ownershipRatio / 100)) / 10) * 10 + Math.floor((propertyTax * 0.2) / 10) * 10;
-    const propertyTaxHalfForDetails = Math.floor((propertyTax * 0.5) / 10) * 10;
-    const urbanAreaTaxHalfForDetails = Math.floor((Math.floor((taxableStandard * 0.0014 * (propertyData.ownershipRatio / 100)) / 10) * 10 * 0.5) / 10) * 10;
-    const localEducationTaxHalfForDetails = Math.floor((Math.floor((propertyTax * 0.2) / 10) * 10 * 0.5) / 10) * 10;
-    const halfYearTaxForDetails = propertyTaxHalfForDetails + urbanAreaTaxHalfForDetails + localEducationTaxHalfForDetails;
-    
-    calculationDetails += `\n\n5. 분기별 세액`;
-    calculationDetails += `\n• 상반기 납부액: ${formatNumberWithCommas(halfYearTaxForDetails)}원 (각 세목별 50%씩 합산)`;
-    calculationDetails += `\n• 하반기 납부액: ${formatNumberWithCommas(halfYearTaxForDetails)}원 + 지역자원시설세 50%`;
-    calculationDetails += `\n• 연간 총액: ${formatNumberWithCommas(propertyTaxTotalForDetails)}원 + 지역자원시설세`;
 
     // 지역자원시설세 계산 - 별도 과세표준이 있으면 사용, 없으면 주택 과세표준 사용
     const regionalResourceTaxStandard = propertyData.regionalResourceTaxStandard || taxableStandard;
@@ -333,11 +335,16 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
   standardPropertyTax = standardPropertyTax * (propertyData.ownershipRatio / 100);
   standardPropertyTax = Math.floor(standardPropertyTax / 10) * 10;
   
-  // 도시지역분 계산 - 과세표준 × 0.14%
+  // 도시지역분 계산 - 과세표준 × 0.14% × 소유비율
   let baseUrbanAreaTax = Math.floor((taxableStandard * 0.0014 * (propertyData.ownershipRatio / 100)) / 10) * 10;
   
+  // 임대주택 감면율 적용
+  if (propertyData.reductionType === "임대주택" && propertyData.currentYearReductionRate > 0) {
+    baseUrbanAreaTax = Math.floor((baseUrbanAreaTax * (1 - propertyData.currentYearReductionRate / 100)) / 10) * 10;
+  }
+  
   // 도시지역분 세부담상한제 적용
-  let urbanAreaTax = baseUrbanAreaTax;
+  urbanAreaTax = baseUrbanAreaTax;
   if (propertyData.previousYear.urbanAreaTax > 0) {
     // 전년도 도시지역분 결정세액 × 세부담상한율
     const urbanAreaTaxCap = Math.floor((propertyData.previousYear.urbanAreaTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10;
@@ -349,6 +356,20 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
 
   // 지방교육세 계산 (재산세 본세의 20%) - 감면된 재산세 기준
   const localEducationTax = Math.floor((propertyTax * 0.2) / 10) * 10;
+  
+  // 분기별 세액 설명 추가
+  const propertyTaxTotalForDetails = propertyTax + urbanAreaTax + localEducationTax;
+  const propertyTaxHalfForDetails = Math.floor((propertyTax * 0.5) / 10) * 10;
+  const urbanAreaTaxHalfForDetails = Math.floor((urbanAreaTax * 0.5) / 10) * 10;
+  const localEducationTaxHalfForDetails = Math.floor((localEducationTax * 0.5) / 10) * 10;
+  const halfYearTaxForDetails = propertyTaxHalfForDetails + urbanAreaTaxHalfForDetails + localEducationTaxHalfForDetails;
+  
+  if (propertyData.propertyType !== "다가구주택") {
+    calculationDetails += `\n\n5. 분기별 세액`;
+    calculationDetails += `\n• 상반기 납부액: ${formatNumberWithCommas(halfYearTaxForDetails)}원 (각 세목별 50%씩 합산)`;
+    calculationDetails += `\n• 하반기 납부액: ${formatNumberWithCommas(halfYearTaxForDetails)}원 + 지역자원시설세 50%`;
+    calculationDetails += `\n• 연간 총액: ${formatNumberWithCommas(propertyTaxTotalForDetails)}원 + 지역자원시설세`;
+  }
   
   // 재산세 총액 계산 (재산세 + 도시지역분 + 지방교육세)
   const propertyTaxTotal = propertyTax + urbanAreaTax + localEducationTax;
