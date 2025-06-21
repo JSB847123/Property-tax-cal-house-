@@ -168,6 +168,13 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     calculationDetails += `\n최종 과세표준 × 세율 × 소유비율 = 최종 재산세 본세`;
     calculationDetails += `\n${formatNumberWithCommas(taxableStandard)}원 × 세율 × ${propertyData.ownershipRatio}% = ${formatNumberWithCommas(basePropertyTaxWithOwnership)}원`;
     
+    console.log('=== 세액 계산 과정 디버깅 ===');
+    console.log('과세표준:', taxableStandard);
+    console.log('기본 세액 (소유비율 적용 전):', basePropertyTax);
+    console.log('소유비율 적용 후 세액:', basePropertyTaxWithOwnership);
+    console.log('소유비율:', propertyData.ownershipRatio);
+    console.log('계산 과정에 표시될 금액:', basePropertyTaxWithOwnership);
+    
     // 간이세율 구간별 상세 계산 표시
     if (taxableStandard <= 60000000) {
       calculationDetails += `\n${formatNumberWithCommas(taxableStandard)}원 × 6천만원 이하 1,000분의 1 = ${formatNumberWithCommas(basePropertyTaxWithOwnership)}원`;
