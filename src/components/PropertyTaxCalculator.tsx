@@ -5,12 +5,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
-import { Calculator, Home, RotateCcw } from "lucide-react";
+import { Calculator, Home, RotateCcw, Save, Clock, Trash2 } from "lucide-react";
 import CalculationSteps from "./CalculationSteps";
 import ResultsDisplay from "./ResultsDisplay";
 import MultiUnitInputs from "./MultiUnitInputs";
 import FAQ from "./FAQ";
-import { PropertyData, CalculationResult, MultiUnitData, PreviousYearMultiUnitData } from "@/types/propertyTax";
+import { PropertyData, CalculationResult, MultiUnitData, PreviousYearMultiUnitData, SavedCalculation } from "@/types/propertyTax";
 import { calculateMarketValueRatio } from "@/utils/taxCalculations";
 import { formatNumberWithCommas, parseNumberFromInput } from "@/utils/formatUtils";
 import { performTaxCalculation } from "@/utils/mainTaxCalculation";
@@ -48,6 +48,48 @@ const PropertyTaxCalculator = () => {
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [isSingleHouseholdSelected, setIsSingleHouseholdSelected] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [savedCalculations, setSavedCalculations] = useState<SavedCalculation[]>(() => {
+    const saved = localStorage.getItem('propertyTaxCalculations');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // 저장된 계산을 로컬 스토리지에 저장
+  const saveSavedCalculations = (calculations: SavedCalculation[]) => {
+    localStorage.setItem('propertyTaxCalculations', JSON.stringify(calculations));
+    setSavedCalculations(calculations);
+  };
+
+  // 계산 결과 저장
+  const saveCalculation = () => {
+    if (!result) return;
+
+    const title = `${propertyData.propertyType} - ${formatNumberWithCommas(propertyData.publicPrice)}원`;
+    const newCalculation: SavedCalculation = {
+      id: Date.now().toString(),
+      title,
+      savedAt: new Date().toLocaleString('ko-KR'),
+      propertyData: { ...propertyData },
+      result: { ...result }
+    };
+
+    // 최근 3개만 유지
+    const updatedCalculations = [newCalculation, ...savedCalculations].slice(0, 3);
+    saveSavedCalculations(updatedCalculations);
+  };
+
+  // 저장된 계산 불러오기
+  const loadCalculation = (calculation: SavedCalculation) => {
+    setPropertyData(calculation.propertyData);
+    setResult(calculation.result);
+    setIsSingleHouseholdSelected(true);
+    setErrorMessage("");
+  };
+
+  // 저장된 계산 삭제
+  const deleteCalculation = (id: string) => {
+    const updatedCalculations = savedCalculations.filter(calc => calc.id !== id);
+    saveSavedCalculations(updatedCalculations);
+  };
 
   // 주택공시가격에 따른 세부담상한율 자동 계산
   const calculateTaxBurdenCapRate = (publicPrice: number): number => {
@@ -630,11 +672,70 @@ const PropertyTaxCalculator = () => {
         />
       )}
 
+      {/* 저장된 계산 목록 */}
+      {savedCalculations.length > 0 && (
+        <Card className="shadow-lg border-0 bg-white/80 backdrop-blur">
+          <CardHeader className="bg-gradient-to-r from-green-600 to-green-700 text-white rounded-t-lg">
+            <CardTitle className="flex items-center gap-2 text-xl">
+              <Clock className="w-6 h-6" />
+              최근 계산 내역 (최대 3개)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="space-y-4">
+              {savedCalculations.map((calculation) => (
+                <div key={calculation.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-gray-800">{calculation.title}</h4>
+                    <p className="text-sm text-gray-600">저장일시: {calculation.savedAt}</p>
+                    <p className="text-sm text-blue-600 font-medium">
+                      연간 총 세액: {formatNumberWithCommas(calculation.result.yearTotal)}원
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={() => loadCalculation(calculation)}
+                      variant="outline"
+                      size="sm"
+                      className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                    >
+                      불러오기
+                    </Button>
+                    <Button
+                      onClick={() => deleteCalculation(calculation.id)}
+                      variant="outline"
+                      size="sm"
+                      className="text-red-600 border-red-600 hover:bg-red-50"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* 자주 들어오는 질문 */}
       <FAQ />
 
       {/* 계산 단계 설명 */}
       <CalculationSteps />
+
+      {/* 페이지 하단 저장 버튼 */}
+      {result && (
+        <div className="fixed bottom-6 right-6 z-50">
+          <Button
+            onClick={saveCalculation}
+            className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-lg"
+            size="lg"
+          >
+            <Save className="w-5 h-5 mr-2" />
+            계산 결과 저장
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

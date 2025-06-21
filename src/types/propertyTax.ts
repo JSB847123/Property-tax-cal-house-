@@ -1,4 +1,3 @@
-
 export interface MultiUnitData {
   id: number;
   taxableStandard: number;
@@ -60,4 +59,12 @@ export interface CalculationResult {
   taxBurdenCapAmount: number;
   finalTaxAmount: number;
   reductionAppliedAmount: number;
+}
+
+export interface SavedCalculation {
+  id: string;
+  title: string;
+  savedAt: string;
+  propertyData: PropertyData;
+  result: CalculationResult;
 }
