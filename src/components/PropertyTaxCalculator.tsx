@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
-import { Calculator, Home, RotateCcw, Save, Clock, Trash2 } from "lucide-react";
+import { Calculator, Home, RotateCcw, Save, Clock, Trash2, Printer } from "lucide-react";
 import CalculationSteps from "./CalculationSteps";
 import ResultsDisplay from "./ResultsDisplay";
 import MultiUnitInputs from "./MultiUnitInputs";
@@ -89,6 +89,186 @@ const PropertyTaxCalculator = () => {
   const deleteCalculation = (id: string) => {
     const updatedCalculations = savedCalculations.filter(calc => calc.id !== id);
     saveSavedCalculations(updatedCalculations);
+  };
+
+  // 출력 기능
+  const handlePrint = () => {
+    if (!result) {
+      alert("출력할 계산 결과가 없습니다. 먼저 계산을 수행해주세요.");
+      return;
+    }
+    
+    // 현재 페이지의 계산 결과만 출력
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert("팝업이 차단되었습니다. 팝업을 허용해주세요.");
+      return;
+    }
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>재산세(주택) 계산 결과</title>
+          <meta charset="utf-8">
+          <style>
+            body { 
+              font-family: 'Malgun Gothic', sans-serif; 
+              margin: 20px; 
+              line-height: 1.6;
+              color: #333;
+            }
+            .header { 
+              text-align: center; 
+              border-bottom: 2px solid #333; 
+              padding-bottom: 20px; 
+              margin-bottom: 30px;
+            }
+            .title { 
+              font-size: 24px; 
+              font-weight: bold; 
+              margin-bottom: 10px;
+            }
+            .subtitle { 
+              font-size: 14px; 
+              color: #666;
+            }
+            .section { 
+              margin-bottom: 25px; 
+              padding: 15px;
+              border: 1px solid #ddd;
+              border-radius: 5px;
+            }
+            .section-title { 
+              font-size: 18px; 
+              font-weight: bold; 
+              margin-bottom: 15px;
+              color: #2563eb;
+              border-bottom: 1px solid #e5e7eb;
+              padding-bottom: 5px;
+            }
+            .info-row { 
+              display: flex; 
+              justify-content: space-between; 
+              margin-bottom: 8px;
+              padding: 5px 0;
+            }
+            .info-label { 
+              font-weight: bold; 
+              min-width: 150px;
+            }
+            .info-value { 
+              text-align: right; 
+              font-weight: normal;
+            }
+            .total-row { 
+              font-size: 18px; 
+              font-weight: bold; 
+              background-color: #f8f9fa;
+              padding: 10px;
+              border-radius: 5px;
+              margin-top: 15px;
+            }
+            .calculation-details {
+              background-color: #f8f9fa;
+              padding: 15px;
+              border-radius: 5px;
+              white-space: pre-wrap;
+              font-family: monospace;
+              font-size: 12px;
+              line-height: 1.4;
+            }
+            .footer {
+              margin-top: 40px;
+              text-align: center;
+              font-size: 12px;
+              color: #666;
+              border-top: 1px solid #ddd;
+              padding-top: 20px;
+            }
+            @media print {
+              body { margin: 0; }
+              .no-print { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="title">재산세(주택) 계산 결과</div>
+            <div class="subtitle">계산일시: ${new Date().toLocaleString('ko-KR')}</div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">부동산 기본 정보</div>
+            <div class="info-row">
+              <span class="info-label">주택 유형:</span>
+              <span class="info-value">${propertyData.propertyType}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">주택공시가격:</span>
+              <span class="info-value">${formatNumberWithCommas(propertyData.publicPrice)}원</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">소유비율:</span>
+              <span class="info-value">${propertyData.ownershipRatio}%</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">1세대 1주택:</span>
+              <span class="info-value">${propertyData.isSingleHousehold ? '예' : '아니오'}</span>
+            </div>
+            ${propertyData.reductionType !== "감면 없음" ? `
+            <div class="info-row">
+              <span class="info-label">감면 유형:</span>
+              <span class="info-value">${propertyData.reductionType} (${propertyData.currentYearReductionRate}%)</span>
+            </div>
+            ` : ''}
+          </div>
+
+          <div class="section">
+            <div class="section-title">계산 결과</div>
+            <div class="info-row">
+              <span class="info-label">재산세 본세:</span>
+              <span class="info-value">${formatNumberWithCommas(result.propertyTax)}원</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">지역자원시설세:</span>
+              <span class="info-value">${formatNumberWithCommas(result.regionalResourceTax)}원</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">지방교육세:</span>
+              <span class="info-value">${formatNumberWithCommas(result.localEducationTax)}원</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">도시지역분:</span>
+              <span class="info-value">${formatNumberWithCommas(result.urbanAreaTax)}원</span>
+            </div>
+            <div class="total-row">
+              <div class="info-row">
+                <span class="info-label">연간 총 세액:</span>
+                <span class="info-value">${formatNumberWithCommas(result.yearTotal)}원</span>
+              </div>
+            </div>
+          </div>
+
+          ${result.calculationDetails ? `
+          <div class="section">
+            <div class="section-title">계산 과정</div>
+            <div class="calculation-details">${result.calculationDetails}</div>
+          </div>
+          ` : ''}
+
+          <div class="footer">
+            <p>본 계산 결과는 참고용이며, 실제 세액과 다를 수 있습니다.</p>
+            <p>정확한 세액은 해당 지방자치단체에 문의하시기 바랍니다.</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
   };
 
   // 주택공시가격에 따른 세부담상한율 자동 계산
@@ -195,15 +375,26 @@ const PropertyTaxCalculator = () => {
               <Home className="w-6 h-6" />
               부동산 정보 입력
             </div>
-            <Button
-              onClick={resetCalculator}
-              variant="secondary"
-              size="sm"
-              className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-            >
-              <RotateCcw className="w-4 h-4 mr-1" />
-              초기화
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={handlePrint}
+                variant="secondary"
+                size="sm"
+                className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+              >
+                <Printer className="w-4 h-4 mr-1" />
+                출력
+              </Button>
+              <Button
+                onClick={resetCalculator}
+                variant="secondary"
+                size="sm"
+                className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+              >
+                <RotateCcw className="w-4 h-4 mr-1" />
+                초기화
+              </Button>
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6 space-y-6">
