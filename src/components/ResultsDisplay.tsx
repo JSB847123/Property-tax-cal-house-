@@ -80,29 +80,58 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
     // 3. 재산세 본세 계산
     explanation += "3. 재산세 본세 계산\n";
     
-    let taxRateDescription = "";
+    // 1세대 1주택 특례세율 적용 여부 확인
+    const isSpecialRateApplicable = propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000 && propertyData.propertyType !== "다가구주택";
     
-    // 표시는 항상 표준세율로 표기
-    if (result.taxableStandard <= 6000000) {
-      taxRateDescription = "과세표준 600만원 이하: 1.0/1,000";
-    } else if (result.taxableStandard <= 150000000) {
-      taxRateDescription = "과세표준에 구간에 따른 세율 (6,000원 + 600만원 초과금액의 1.5/1,000)";
-    } else if (result.taxableStandard <= 300000000) {
-      taxRateDescription = "과세표준에 구간에 따른 세율 (216,000원 + 1억5천만원 초과금액의 2.5/1,000)";
+    if (isSpecialRateApplicable) {
+      explanation += `- 적용 세율: 1세대 1주택자 특례세율\n`;
+      explanation += `- 조건: 1세대 1주택 + 주택공시가격 9억원 이하\n`;
+      explanation += `- 세율 구조:\n`;
+      explanation += `  • 6천만원 이하: 0.05%\n`;
+      explanation += `  • 6천만원 초과 1.5억원 이하: 30,000원 + 초과분 × 0.1%\n`;
+      explanation += `  • 1.5억원 초과 3억원 이하: 120,000원 + 초과분 × 0.2%\n`;
+      explanation += `  • 3억원 초과: 420,000원 + 초과분 × 0.35%\n`;
+      
+      // 특례세율 계산 공식 표시
+      if (result.taxableStandard <= 60000000) {
+        explanation += `- 과세표준에 특례세율 적용: ${formatCurrency(result.taxableStandard)}원 × 0.05% = ${formatCurrency(result.specialRateAmount)}원\n`;
+      } else if (result.taxableStandard <= 150000000) {
+        const excessAmount = result.taxableStandard - 60000000;
+        explanation += `- 과세표준에 특례세율 적용: 30,000원 + ${formatCurrency(excessAmount)}원 × 0.1% = ${formatCurrency(result.specialRateAmount)}원\n`;
+      } else if (result.taxableStandard <= 300000000) {
+        const excessAmount = result.taxableStandard - 150000000;
+        explanation += `- 과세표준에 특례세율 적용: 120,000원 + ${formatCurrency(excessAmount)}원 × 0.2% = ${formatCurrency(result.specialRateAmount)}원\n`;
+      } else {
+        const excessAmount = result.taxableStandard - 300000000;
+        explanation += `- 과세표준에 특례세율 적용: 420,000원 + ${formatCurrency(excessAmount)}원 × 0.35% = ${formatCurrency(result.specialRateAmount)}원\n`;
+      }
+      
+      // 표준세율과 비교 표시
+      explanation += `\n※ 세율 비교\n`;
+      explanation += `• 특례세율 적용: ${formatCurrency(result.specialRateAmount)}원\n`;
+      explanation += `• 표준세율 적용: ${formatCurrency(result.standardRateAmount)}원\n`;
+      explanation += `• 절약액: ${formatCurrency(result.standardRateAmount - result.specialRateAmount)}원\n\n`;
+      
+      explanation += `- 소유비율 적용: ${formatCurrency(result.specialRateAmount)}원 × ${propertyData.ownershipRatio}% = ${formatCurrency(Math.floor((result.specialRateAmount * (propertyData.ownershipRatio / 100)) / 10) * 10)}원\n`;
     } else {
-      taxRateDescription = "과세표준 3억원 초과: 57만원 + 3억원 초과금액의 4/1,000";
+      let taxRateDescription = "";
+      
+      // 표준세율 표기
+      if (result.taxableStandard <= 6000000) {
+        taxRateDescription = "과세표준 600만원 이하: 1.0/1,000";
+      } else if (result.taxableStandard <= 150000000) {
+        taxRateDescription = "과세표준에 구간에 따른 세율 (6,000원 + 600만원 초과금액의 1.5/1,000)";
+      } else if (result.taxableStandard <= 300000000) {
+        taxRateDescription = "과세표준에 구간에 따른 세율 (216,000원 + 1억5천만원 초과금액의 2.5/1,000)";
+      } else {
+        taxRateDescription = "과세표준 3억원 초과: 57만원 + 3억원 초과금액의 4/1,000";
+      }
+      
+      explanation += `- 적용 세율: 표준세율\n`;
+      explanation += `- 세율 구조: ${taxRateDescription}\n`;
+      explanation += `- 과세표준을 적용한 계산: ${formatCurrency(result.taxableStandard)}원 × 세율 × ${propertyData.ownershipRatio}% = ${formatCurrency(result.propertyTax)}원\n`;
+      explanation += `  ※ 기본 세액(소유비율 적용 전): ${formatCurrency(result.standardRateAmount)}원\n`;
     }
-    
-    explanation += `- 표준세율 적용: ${taxRateDescription}\n`;
-    
-    // 올바른 기본 세액 사용 - specialRateAmount 또는 standardRateAmount 중 적용된 것 사용
-    const baseTaxBeforeOwnership = propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000 && propertyData.propertyType !== "다가구주택" 
-      ? result.specialRateAmount 
-      : result.standardRateAmount;
-    const roundedBaseTax = Math.floor(baseTaxBeforeOwnership / 10) * 10;
-    
-    explanation += `- 과세표준을 적용한 계산: 최종 과세표준 ${formatCurrency(result.taxableStandard)}원 × 세율 × 소유비율 ${propertyData.ownershipRatio}% = ${formatCurrency(result.propertyTax)}원\n`;
-    explanation += `  ※ 기본 세액(소유비율 적용 전): ${formatCurrency(roundedBaseTax)}원\n`;
     
     // 세부담상한제 적용 여부
     if (propertyData.previousYear.actualPaidTax > 0) {

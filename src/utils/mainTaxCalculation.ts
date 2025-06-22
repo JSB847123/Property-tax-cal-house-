@@ -32,8 +32,9 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     taxableStandardBeforeCap = taxableStandard;
     taxableStandardCap = taxableStandard;
     
-    // 다가구주택에서는 1세대 1주택 특례세율 적용 안함
+    // 다가구주택에서는 1세대 1주택 특례세율 적용 안함 (간이세율 적용)
     const isSpecialRateApplicable = false;
+    console.log('다가구주택: 1세대 1주택 특례세율 적용 제외, 간이세율 적용');
     let specialRateTax = 0;
     let standardRateTax = 0;
     
@@ -281,18 +282,26 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     let standardRateTax = 0;
     
     if (isSpecialRateApplicable) {
-      // 1세대 1주택 특례세율 적용 (항상 더 낮으므로 특례세율 사용)
-      basePropertyTax = calculateSpecialRatePropertyTax(taxableStandard);
-      basePropertyTax = Math.floor(basePropertyTax / 10) * 10;
+      // 1세대 1주택 특례세율 적용
+      specialRateTax = calculateSpecialRatePropertyTax(taxableStandard);
+      specialRateTax = Math.floor(specialRateTax / 10) * 10;
+      basePropertyTax = specialRateTax;
       
       // 표준세율도 계산 (비교 표시용)
       standardRateTax = calculateStandardPropertyTax(taxableStandard);
       standardRateTax = Math.floor(standardRateTax / 10) * 10;
-      specialRateTax = basePropertyTax;
+      
+      console.log('1세대 1주택 특례세율 적용:', {
+        taxableStandard,
+        specialRateTax,
+        standardRateTax,
+        절약액: standardRateTax - specialRateTax
+      });
     } else {
       // 표준세율 적용
       basePropertyTax = calculateStandardPropertyTax(taxableStandard);
       basePropertyTax = Math.floor(basePropertyTax / 10) * 10;
+      standardRateTax = basePropertyTax;
     }
     
     console.log('세부담상한제 적용 전 기본 세액:', basePropertyTax);
@@ -327,30 +336,47 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     
     // 적용 세율 표시
     if (isSpecialRateApplicable) {
-      calculationDetails += `\n적용 세율`;
-      calculationDetails += `\n1세대 1주택자 특례세율 적용(주택공시가격 9억원 이하)`;
-      calculationDetails += `\n과세표준에 구간에 따른 세율 (3만원＋6천만원 초과금액의 1,000분의 1)`;
+      calculationDetails += `\n적용 세율: 1세대 1주택자 특례세율`;
+      calculationDetails += `\n조건: 1세대 1주택 + 주택공시가격 9억원 이하`;
+      calculationDetails += `\n세율 구조:`;
+      calculationDetails += `\n• 6천만원 이하: 0.05%`;
+      calculationDetails += `\n• 6천만원 초과 1.5억원 이하: 30,000원 + 초과분 × 0.1%`;
+      calculationDetails += `\n• 1.5억원 초과 3억원 이하: 120,000원 + 초과분 × 0.2%`;
+      calculationDetails += `\n• 3억원 초과: 420,000원 + 초과분 × 0.35%`;
       
-      calculationDetails += `\n\n과세표준을 적용한 계산: 1세대 1주택자 특례세율 선택`;
-      calculationDetails += `\n최종 과세표준 × 세율 × 소유비율`;
-      const specialRateWithOwnership = Math.floor((specialRateTax * (propertyData.ownershipRatio / 100)) / 10) * 10;
+      calculationDetails += `\n\n과세표준에 특례세율 적용`;
       
       // 특례세율 계산 공식을 정확히 표시
       if (taxableStandard <= 60000000) {
-        calculationDetails += `\n${formatNumberWithCommas(taxableStandard)}원 × 0.1% × ${propertyData.ownershipRatio}% = ${formatNumberWithCommas(specialRateWithOwnership)}원`;
-      } else {
+        calculationDetails += `\n${formatNumberWithCommas(taxableStandard)}원 × 0.05% = ${formatNumberWithCommas(specialRateTax)}원`;
+      } else if (taxableStandard <= 150000000) {
         const excessAmount = taxableStandard - 60000000;
-        calculationDetails += `\n(30,000원 + ${formatNumberWithCommas(excessAmount)}원 × 0.1%) × ${propertyData.ownershipRatio}% = ${formatNumberWithCommas(specialRateWithOwnership)}원`;
+        calculationDetails += `\n30,000원 + ${formatNumberWithCommas(excessAmount)}원 × 0.1% = ${formatNumberWithCommas(specialRateTax)}원`;
+      } else if (taxableStandard <= 300000000) {
+        const excessAmount = taxableStandard - 150000000;
+        calculationDetails += `\n120,000원 + ${formatNumberWithCommas(excessAmount)}원 × 0.2% = ${formatNumberWithCommas(specialRateTax)}원`;
+      } else {
+        const excessAmount = taxableStandard - 300000000;
+        calculationDetails += `\n420,000원 + ${formatNumberWithCommas(excessAmount)}원 × 0.35% = ${formatNumberWithCommas(specialRateTax)}원`;
       }
+      
+      // 표준세율과 비교 표시
+      calculationDetails += `\n\n※ 세율 비교`;
+      calculationDetails += `\n• 특례세율 적용: ${formatNumberWithCommas(specialRateTax)}원`;
+      calculationDetails += `\n• 표준세율 적용: ${formatNumberWithCommas(standardRateTax)}원`;
+      calculationDetails += `\n• 절약액: ${formatNumberWithCommas(standardRateTax - specialRateTax)}원`;
+      
+      calculationDetails += `\n\n소유비율 적용`;
+      const specialRateWithOwnership = Math.floor((specialRateTax * (propertyData.ownershipRatio / 100)) / 10) * 10;
+      calculationDetails += `\n${formatNumberWithCommas(specialRateTax)}원 × ${propertyData.ownershipRatio}% = ${formatNumberWithCommas(specialRateWithOwnership)}원`;
       
       // 노후연금 감면이 있는 경우 표준세율 적용 후 감면 적용도 표시
       if (propertyData.reductionType === "노후연금" && propertyData.currentYearReductionRate > 0) {
-        calculationDetails += `\n\n과세표준에서 표준세율로 적용한 후 노후연금 감면 적용`;
+        calculationDetails += `\n\n참고: 표준세율 + 노후연금 감면 적용 시`;
         const standardRateWithOwnership = Math.floor((standardRateTax * (propertyData.ownershipRatio / 100)) / 10) * 10;
         const standardRateWithReduction = Math.floor((standardRateWithOwnership * (1 - propertyData.currentYearReductionRate / 100)) / 10) * 10;
-        calculationDetails += `\n${formatNumberWithCommas(taxableStandard)}원 × 표준세율 × ${propertyData.ownershipRatio}% = ${formatNumberWithCommas(standardRateWithOwnership)}원`;
-        calculationDetails += `\n※ 노후연금 ${propertyData.currentYearReductionRate}% 적용`;
-        calculationDetails += `\n${formatNumberWithCommas(standardRateWithOwnership)}원 × (1 - ${propertyData.currentYearReductionRate}%) × 소유비율(${propertyData.ownershipRatio}%) = ${formatNumberWithCommas(standardRateWithReduction)}원`;
+        calculationDetails += `\n${formatNumberWithCommas(standardRateTax)}원 × ${propertyData.ownershipRatio}% × (1 - ${propertyData.currentYearReductionRate}%) = ${formatNumberWithCommas(standardRateWithReduction)}원`;
+        calculationDetails += `\n특례세율이 더 유리함 (${formatNumberWithCommas(specialRateWithOwnership - standardRateWithReduction)}원 절약)`;
       }
     } else {
       calculationDetails += `\n적용 세율`;
@@ -600,8 +626,14 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     baseSpecialRateAmount = basePropertyTaxWithOwnership / (propertyData.ownershipRatio / 100);
     baseStandardRateAmount = calculateMultiUnitPropertyTax(propertyData.multiUnits, false); // 소유비율 미적용
   } else {
-    // 일반 주택의 경우 - 소유비율 적용 전 값 계산 (간이세율 사용)
-    baseSpecialRateAmount = calculateSimplifiedPropertyTax(taxableStandard);
+    // 일반 주택의 경우 - 1세대 1주택 특례세율 적용 여부에 따라 구분
+    const isSpecialRateApplicable = propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000;
+    
+    if (isSpecialRateApplicable) {
+      baseSpecialRateAmount = calculateSpecialRatePropertyTax(taxableStandard);
+    } else {
+      baseSpecialRateAmount = calculateSimplifiedPropertyTax(taxableStandard);
+    }
     baseStandardRateAmount = calculateStandardPropertyTax(taxableStandard);
   }
   

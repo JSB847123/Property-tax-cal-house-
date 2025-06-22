@@ -161,9 +161,8 @@ export const calculatePreviousYearEquivalent = (
     };
   }
 
-  const previousCalculatedTax = previousYear.appliedRate === 'special' 
-    ? calculatePropertyTaxForStandard(previousYear.taxableStandard, isSingleHousehold, publicPrice)
-    : calculateStandardPropertyTax(previousYear.taxableStandard);
+  // 전년도는 기본적으로 표준세율로 계산 (특례세율 적용 여부는 현년도 기준으로 판단)
+  const previousCalculatedTax = calculateStandardPropertyTax(previousYear.taxableStandard);
   
   return {
     withoutReduction: previousCalculatedTax,
@@ -171,13 +170,19 @@ export const calculatePreviousYearEquivalent = (
   };
 };
 
-// 1세대 1주택 특례세율 계산
+// 1세대 1주택 특례세율 계산 (주택공시가격 9억원 이하)
 export const calculateSpecialRatePropertyTax = (taxableStandard: number): number => {
   if (taxableStandard <= 60000000) {
-    // 6천만원 이하: 과세표준 × 0.1% 
-    return taxableStandard * 0.001;
-  } else {
-    // 6천만원 초과: 3만원 + (과세표준 - 6천만원) × 0.1%
+    // 6천만원 이하: 과세표준 × 0.05%
+    return taxableStandard * 0.0005;
+  } else if (taxableStandard <= 150000000) {
+    // 6천만원 초과 1억5천만원 이하: 30,000원 + (6천만원 초과금액 × 0.1%)
     return 30000 + (taxableStandard - 60000000) * 0.001;
+  } else if (taxableStandard <= 300000000) {
+    // 1억5천만원 초과 3억원 이하: 120,000원 + (1억5천만원 초과금액 × 0.2%)
+    return 120000 + (taxableStandard - 150000000) * 0.002;
+  } else {
+    // 3억원 초과: 420,000원 + (3억원 초과금액 × 0.35%)
+    return 420000 + (taxableStandard - 300000000) * 0.0035;
   }
 };

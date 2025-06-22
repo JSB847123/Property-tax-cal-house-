@@ -444,14 +444,44 @@ const PropertyTaxCalculator = () => {
           <div class="section">
             <div class="section-title">민원인 설명란</div>
             <div class="citizen-explanation">
-              <p style="margin: 0 0 15px 0; font-weight: bold;">재산세 계산 안내</p>
-              <p style="margin: 0 0 10px 0;">• 본 계산 결과는 참고용이며, 실제 세액과 다를 수 있습니다.</p>
-              <p style="margin: 0 0 10px 0;">• 정확한 세액은 관할 지방자치단체에 문의하시기 바랍니다.</p>
-              <p style="margin: 0 0 10px 0;">• 재산세는 매년 7월과 9월에 2회 분할 납부합니다.</p>
-              <p style="margin: 0 0 10px 0;">• 지역자원시설세는 9월에 함께 납부합니다.</p>
-              <p style="margin: 0 0 10px 0;">• 납부 기한을 넘기면 가산세가 부과될 수 있습니다.</p>
-              <p style="margin: 0 0 10px 0;">• 세부담상한제는 전년도 대비 세액 증가를 제한하는 제도입니다.</p>
-              <p style="margin: 0 0 10px 0;">• 과표상한제는 전년도 대비 과세표준 증가를 제한하는 제도입니다.</p>
+              <p style="margin: 0 0 15px 0; font-weight: bold;">■ 재산세 계산 과정 상세 설명</p>
+              
+              <p style="margin: 0 0 10px 0; font-weight: bold;">1. 기본 정보</p>
+              <p style="margin: 0 0 5px 0;">- 주택 유형: ${propertyData.propertyType}</p>
+              <p style="margin: 0 0 5px 0;">- 공시가격: ${formatNumberWithCommas(propertyData.publicPrice)}원</p>
+              <p style="margin: 0 0 5px 0;">- 소유비율: ${propertyData.ownershipRatio}%</p>
+              <p style="margin: 0 0 10px 0;">- 1세대 1주택자 여부: ${propertyData.isSingleHousehold ? "예" : "아니오"}</p>
+              
+              <p style="margin: 0 0 10px 0; font-weight: bold;">2. 과세표준 계산</p>
+              <p style="margin: 0 0 5px 0;">- 기준 과세표준: 공시가격 × 공정시장가액비율</p>
+              <p style="margin: 0 0 10px 0;">- 최종 과세표준: ${formatNumberWithCommas(result.taxableStandard)}원</p>
+              
+              <p style="margin: 0 0 10px 0; font-weight: bold;">3. 재산세 본세 계산</p>
+              ${propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000 && propertyData.propertyType !== "다가구주택" ? `
+              <p style="margin: 0 0 5px 0;">- 적용 세율: 1세대 1주택자 특례세율 (0.1%)</p>
+              <p style="margin: 0 0 5px 0;">- 조건: 1세대 1주택 + 주택공시가격 9억원 이하</p>
+              <p style="margin: 0 0 5px 0;">- 세율 구조: 6천만원 이하 0.1%, 6천만원 초과분 0.1% (최소 3만원)</p>
+              <p style="margin: 0 0 5px 0;">- 절약액: 표준세율 대비 ${formatNumberWithCommas(result.standardRateAmount - result.specialRateAmount)}원 절약</p>
+              ` : `
+              <p style="margin: 0 0 5px 0;">- 적용 세율: 표준세율 (누진세율)</p>
+              <p style="margin: 0 0 5px 0;">- 세율 구조: 600만원 이하 0.1%, 600만원 초과 구간별 누진세율</p>
+              `}
+              <p style="margin: 0 0 10px 0;">- 최종 재산세: ${formatNumberWithCommas(result.propertyTax)}원</p>
+              
+              <p style="margin: 0 0 10px 0; font-weight: bold;">4. 기타 세목</p>
+              <p style="margin: 0 0 5px 0;">- 도시지역분: ${formatNumberWithCommas(result.urbanAreaTax)}원</p>
+              <p style="margin: 0 0 5px 0;">- 지방교육세: ${formatNumberWithCommas(result.localEducationTax)}원</p>
+              <p style="margin: 0 0 10px 0;">- 지역자원시설세: ${formatNumberWithCommas(result.regionalResourceTax)}원</p>
+              
+              <p style="margin: 0 0 10px 0; font-weight: bold;">5. 납부 안내</p>
+              <p style="margin: 0 0 5px 0;">- 총 납부세액: ${formatNumberWithCommas(result.yearTotal)}원</p>
+              <p style="margin: 0 0 5px 0;">- 1기분 (7월): ${formatNumberWithCommas(Math.floor((result.propertyTax + result.urbanAreaTax + result.localEducationTax) * 0.5 / 10) * 10)}원</p>
+              <p style="margin: 0 0 5px 0;">- 2기분 (9월): ${formatNumberWithCommas(Math.floor((result.propertyTax + result.urbanAreaTax + result.localEducationTax) * 0.5 / 10) * 10)}원 + 지역자원시설세</p>
+              
+              <p style="margin: 15px 0 5px 0; font-weight: bold;">※ 주의사항</p>
+              <p style="margin: 0 0 5px 0;">• 본 계산 결과는 참고용이며, 실제 세액과 다를 수 있습니다.</p>
+              <p style="margin: 0 0 5px 0;">• 정확한 세액은 관할 지방자치단체에 문의하시기 바랍니다.</p>
+              <p style="margin: 0 0 5px 0;">• 납부 기한을 넘기면 가산세가 부과될 수 있습니다.</p>
               <p style="margin: 0;">• 각종 감면 혜택은 신청기한 내에 신청해야 적용됩니다.</p>
             </div>
           </div>
@@ -698,14 +728,44 @@ const PropertyTaxCalculator = () => {
         <div style="margin-bottom: 25px; padding: 15px; border: 1px solid #ddd; border-radius: 5px;">
           <div style="font-size: 18px; font-weight: bold; margin-bottom: 15px; color: #2563eb; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px;">민원인 설명란</div>
           <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; line-height: 1.8;">
-            <p style="margin: 0 0 15px 0; font-weight: bold;">재산세 계산 안내</p>
-            <p style="margin: 0 0 10px 0;">• 본 계산 결과는 참고용이며, 실제 세액과 다를 수 있습니다.</p>
-            <p style="margin: 0 0 10px 0;">• 정확한 세액은 관할 지방자치단체에 문의하시기 바랍니다.</p>
-            <p style="margin: 0 0 10px 0;">• 재산세는 매년 7월과 9월에 2회 분할 납부합니다.</p>
-            <p style="margin: 0 0 10px 0;">• 지역자원시설세는 9월에 함께 납부합니다.</p>
-            <p style="margin: 0 0 10px 0;">• 납부 기한을 넘기면 가산세가 부과될 수 있습니다.</p>
-            <p style="margin: 0 0 10px 0;">• 세부담상한제는 전년도 대비 세액 증가를 제한하는 제도입니다.</p>
-            <p style="margin: 0 0 10px 0;">• 과표상한제는 전년도 대비 과세표준 증가를 제한하는 제도입니다.</p>
+            <p style="margin: 0 0 15px 0; font-weight: bold;">■ 재산세 계산 과정 상세 설명</p>
+            
+            <p style="margin: 0 0 10px 0; font-weight: bold;">1. 기본 정보</p>
+            <p style="margin: 0 0 5px 0;">- 주택 유형: ${propertyData.propertyType}</p>
+            <p style="margin: 0 0 5px 0;">- 공시가격: ${formatNumberWithCommas(propertyData.publicPrice)}원</p>
+            <p style="margin: 0 0 5px 0;">- 소유비율: ${propertyData.ownershipRatio}%</p>
+            <p style="margin: 0 0 10px 0;">- 1세대 1주택자 여부: ${propertyData.isSingleHousehold ? "예" : "아니오"}</p>
+            
+            <p style="margin: 0 0 10px 0; font-weight: bold;">2. 과세표준 계산</p>
+            <p style="margin: 0 0 5px 0;">- 기준 과세표준: 공시가격 × 공정시장가액비율</p>
+            <p style="margin: 0 0 10px 0;">- 최종 과세표준: ${formatNumberWithCommas(result.taxableStandard)}원</p>
+            
+            <p style="margin: 0 0 10px 0; font-weight: bold;">3. 재산세 본세 계산</p>
+            ${propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000 && propertyData.propertyType !== "다가구주택" ? `
+            <p style="margin: 0 0 5px 0;">- 적용 세율: 1세대 1주택자 특례세율 (0.1%)</p>
+            <p style="margin: 0 0 5px 0;">- 조건: 1세대 1주택 + 주택공시가격 9억원 이하</p>
+            <p style="margin: 0 0 5px 0;">- 세율 구조: 6천만원 이하 0.1%, 6천만원 초과분 0.1% (최소 3만원)</p>
+            <p style="margin: 0 0 5px 0;">- 절약액: 표준세율 대비 ${formatNumberWithCommas(result.standardRateAmount - result.specialRateAmount)}원 절약</p>
+            ` : `
+            <p style="margin: 0 0 5px 0;">- 적용 세율: 표준세율 (누진세율)</p>
+            <p style="margin: 0 0 5px 0;">- 세율 구조: 600만원 이하 0.1%, 600만원 초과 구간별 누진세율</p>
+            `}
+            <p style="margin: 0 0 10px 0;">- 최종 재산세: ${formatNumberWithCommas(result.propertyTax)}원</p>
+            
+            <p style="margin: 0 0 10px 0; font-weight: bold;">4. 기타 세목</p>
+            <p style="margin: 0 0 5px 0;">- 도시지역분: ${formatNumberWithCommas(result.urbanAreaTax)}원</p>
+            <p style="margin: 0 0 5px 0;">- 지방교육세: ${formatNumberWithCommas(result.localEducationTax)}원</p>
+            <p style="margin: 0 0 10px 0;">- 지역자원시설세: ${formatNumberWithCommas(result.regionalResourceTax)}원</p>
+            
+            <p style="margin: 0 0 10px 0; font-weight: bold;">5. 납부 안내</p>
+            <p style="margin: 0 0 5px 0;">- 총 납부세액: ${formatNumberWithCommas(result.yearTotal)}원</p>
+            <p style="margin: 0 0 5px 0;">- 1기분 (7월): ${formatNumberWithCommas(Math.floor((result.propertyTax + result.urbanAreaTax + result.localEducationTax) * 0.5 / 10) * 10)}원</p>
+            <p style="margin: 0 0 5px 0;">- 2기분 (9월): ${formatNumberWithCommas(Math.floor((result.propertyTax + result.urbanAreaTax + result.localEducationTax) * 0.5 / 10) * 10)}원 + 지역자원시설세</p>
+            
+            <p style="margin: 15px 0 5px 0; font-weight: bold;">※ 주의사항</p>
+            <p style="margin: 0 0 5px 0;">• 본 계산 결과는 참고용이며, 실제 세액과 다를 수 있습니다.</p>
+            <p style="margin: 0 0 5px 0;">• 정확한 세액은 관할 지방자치단체에 문의하시기 바랍니다.</p>
+            <p style="margin: 0 0 5px 0;">• 납부 기한을 넘기면 가산세가 부과될 수 있습니다.</p>
             <p style="margin: 0;">• 각종 감면 혜택은 신청기한 내에 신청해야 적용됩니다.</p>
           </div>
         </div>
