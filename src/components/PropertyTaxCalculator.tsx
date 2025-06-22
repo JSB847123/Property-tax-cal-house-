@@ -111,12 +111,12 @@ const PropertyTaxCalculator = () => {
   };
 
   // 출력 기능
-  const handlePrint = () => {
+    const handlePrint = () => {
     if (!result) {
       alert("출력할 계산 결과가 없습니다. 먼저 계산을 수행해주세요.");
       return;
     }
-    
+
     // 현재 페이지의 계산 결과만 출력
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -197,6 +197,12 @@ const PropertyTaxCalculator = () => {
               font-size: 12px;
               line-height: 1.4;
             }
+            .citizen-explanation {
+              background-color: #f8f9fa;
+              padding: 15px;
+              border-radius: 5px;
+              line-height: 1.8;
+            }
             .footer {
               margin-top: 40px;
               text-align: center;
@@ -218,7 +224,7 @@ const PropertyTaxCalculator = () => {
           </div>
 
           <div class="section">
-            <div class="section-title">부동산 기본 정보</div>
+            <div class="section-title">부동산 정보 입력</div>
             <div class="info-row">
               <span class="info-label">주택 유형:</span>
               <span class="info-value">${propertyData.propertyType}</span>
@@ -247,12 +253,6 @@ const PropertyTaxCalculator = () => {
               <span class="info-value">${propertyData.rentalHousingArea}㎡</span>
             </div>
             ` : ''}
-            ${result.taxableStandard ? `
-            <div class="info-row">
-              <span class="info-label">과세표준:</span>
-              <span class="info-value">${formatNumberWithCommas(result.taxableStandard)}원</span>
-            </div>
-            ` : ''}
             ${propertyData.regionalResourceTaxStandard ? `
             <div class="info-row">
               <span class="info-label">지역자원시설세 과세표준:</span>
@@ -267,11 +267,6 @@ const PropertyTaxCalculator = () => {
               <span class="info-label">과표상한율:</span>
               <span class="info-value">${propertyData.taxStandardCapRate}%</span>
             </div>
-          </div>
-
-          ${propertyData.previousYear.actualPaidTax > 0 || propertyData.previousYear.taxableStandard > 0 ? `
-          <div class="section">
-            <div class="section-title">전년도 정보</div>
             ${propertyData.previousYear.actualPaidTax > 0 ? `
             <div class="info-row">
               <span class="info-label">전년도 실제 납부세액:</span>
@@ -296,29 +291,27 @@ const PropertyTaxCalculator = () => {
               <span class="info-value">${propertyData.previousYear.appliedRate === 'special' ? '간이세율' : '표준세율'}</span>
             </div>
             ` : ''}
-          </div>
-          ` : ''}
-
-          ${propertyData.propertyType === "다가구주택" && propertyData.multiUnits.length > 0 ? `
-          <div class="section">
-            <div class="section-title">다가구주택 세부 정보</div>
-            ${propertyData.multiUnits.map((unit, index) => `
-            <div class="info-row">
-              <span class="info-label">호실 ${index + 1} 과세표준:</span>
-              <span class="info-value">${formatNumberWithCommas(unit.taxableStandard)}원</span>
-            </div>
-            ${unit.regionalResourceTaxStandard ? `
-            <div class="info-row">
-              <span class="info-label">호실 ${index + 1} 지역자원시설세 과세표준:</span>
-              <span class="info-value">${formatNumberWithCommas(unit.regionalResourceTaxStandard)}원</span>
+            ${propertyData.propertyType === "다가구주택" && propertyData.multiUnits.length > 0 ? `
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb;">
+              <div style="font-weight: bold; margin-bottom: 10px;">다가구주택 호실별 정보</div>
+              ${propertyData.multiUnits.map((unit, index) => `
+              <div class="info-row">
+                <span class="info-label">호실 ${index + 1} 과세표준:</span>
+                <span class="info-value">${formatNumberWithCommas(unit.taxableStandard)}원</span>
+              </div>
+              ${unit.regionalResourceTaxStandard ? `
+              <div class="info-row">
+                <span class="info-label">호실 ${index + 1} 지역자원시설세 과세표준:</span>
+                <span class="info-value">${formatNumberWithCommas(unit.regionalResourceTaxStandard)}원</span>
+              </div>
+              ` : ''}
+              `).join('')}
             </div>
             ` : ''}
-            `).join('')}
           </div>
-          ` : ''}
 
           <div class="section">
-            <div class="section-title">계산 결과</div>
+            <div class="section-title">세액 계산 결과</div>
             <div class="info-row">
               <span class="info-label">재산세 본세:</span>
               <span class="info-value">${formatNumberWithCommas(result.propertyTax)}원</span>
@@ -336,81 +329,98 @@ const PropertyTaxCalculator = () => {
               <span class="info-value">${formatNumberWithCommas(result.urbanAreaTax)}원</span>
             </div>
             <div class="total-row">
-              <div class="info-row">
+              <div class="info-row" style="margin-bottom: 0;">
                 <span class="info-label">연간 총 세액:</span>
                 <span class="info-value">${formatNumberWithCommas(result.yearTotal)}원</span>
               </div>
             </div>
-          </div>
-
-          <div class="section">
-            <div class="section-title">세율 및 상한제 정보</div>
-            <div class="info-row">
-              <span class="info-label">적용 세율:</span>
-              <span class="info-value">${propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000 ? '간이세율 (1세대 1주택 특례)' : '간이세율'}</span>
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb;">
+              <div style="font-weight: bold; margin-bottom: 10px;">납부 일정</div>
+              <div class="info-row">
+                <span class="info-label">1기 납부액 (7월):</span>
+                <span class="info-value">${formatNumberWithCommas(result.firstHalfTotal)}원</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">2기 납부액 (9월):</span>
+                <span class="info-value">${formatNumberWithCommas(result.secondHalfTotal)}원</span>
+              </div>
             </div>
-            ${result.specialRateAmount ? `
-            <div class="info-row">
-              <span class="info-label">간이세율 적용금액:</span>
-              <span class="info-value">${formatNumberWithCommas(result.specialRateAmount)}원</span>
-            </div>
-            ` : ''}
-            ${result.standardRateAmount ? `
-            <div class="info-row">
-              <span class="info-label">표준세율 적용금액:</span>
-              <span class="info-value">${formatNumberWithCommas(result.standardRateAmount)}원</span>
-            </div>
-            ` : ''}
-            ${result.taxBurdenCapAmount > 0 ? `
-            <div class="info-row">
-              <span class="info-label">세부담상한액:</span>
-              <span class="info-value">${formatNumberWithCommas(result.taxBurdenCapAmount)}원</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">세부담상한제 적용:</span>
-              <span class="info-value">${result.propertyTax < result.specialRateAmount ? '적용됨' : '미적용'}</span>
-            </div>
-            ` : `
-            <div class="info-row">
-              <span class="info-label">세부담상한제 적용:</span>
-              <span class="info-value">미적용 (전년도 정보 없음)</span>
-            </div>
-            `}
-            ${result.taxableStandardCap > 0 ? `
-            <div class="info-row">
-              <span class="info-label">과표상한액:</span>
-              <span class="info-value">${formatNumberWithCommas(result.taxableStandardCap)}원</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">과표상한제 적용:</span>
-              <span class="info-value">${result.taxableStandard < result.taxableStandardBeforeCap ? '적용됨' : '미적용'}</span>
-            </div>
-            ` : `
-            <div class="info-row">
-              <span class="info-label">과표상한제 적용:</span>
-              <span class="info-value">미적용 (전년도 정보 없음)</span>
-            </div>
-            `}
-          </div>
-
-          <div class="section">
-            <div class="section-title">납부 일정</div>
-            <div class="info-row">
-              <span class="info-label">1기 납부액 (7월):</span>
-              <span class="info-value">${formatNumberWithCommas(result.firstHalfTotal)}원</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">2기 납부액 (9월):</span>
-              <span class="info-value">${formatNumberWithCommas(result.secondHalfTotal)}원</span>
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb;">
+              <div style="font-weight: bold; margin-bottom: 10px;">세율 및 상한제 정보</div>
+              <div class="info-row">
+                <span class="info-label">과세표준:</span>
+                <span class="info-value">${formatNumberWithCommas(result.taxableStandard)}원</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">적용 세율:</span>
+                <span class="info-value">${propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000 ? '간이세율 (1세대 1주택 특례)' : '간이세율'}</span>
+              </div>
+              ${result.specialRateAmount ? `
+              <div class="info-row">
+                <span class="info-label">간이세율 적용금액:</span>
+                <span class="info-value">${formatNumberWithCommas(result.specialRateAmount)}원</span>
+              </div>
+              ` : ''}
+              ${result.standardRateAmount ? `
+              <div class="info-row">
+                <span class="info-label">표준세율 적용금액:</span>
+                <span class="info-value">${formatNumberWithCommas(result.standardRateAmount)}원</span>
+              </div>
+              ` : ''}
+              ${result.taxBurdenCapAmount > 0 ? `
+              <div class="info-row">
+                <span class="info-label">세부담상한액:</span>
+                <span class="info-value">${formatNumberWithCommas(result.taxBurdenCapAmount)}원</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">세부담상한제 적용:</span>
+                <span class="info-value">${result.propertyTax < result.specialRateAmount ? '적용됨' : '미적용'}</span>
+              </div>
+              ` : `
+              <div class="info-row">
+                <span class="info-label">세부담상한제 적용:</span>
+                <span class="info-value">미적용 (전년도 정보 없음)</span>
+              </div>
+              `}
+              ${result.taxableStandardCap > 0 ? `
+              <div class="info-row">
+                <span class="info-label">과표상한액:</span>
+                <span class="info-value">${formatNumberWithCommas(result.taxableStandardCap)}원</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">과표상한제 적용:</span>
+                <span class="info-value">${result.taxableStandard < result.taxableStandardBeforeCap ? '적용됨' : '미적용'}</span>
+              </div>
+              ` : `
+              <div class="info-row">
+                <span class="info-label">과표상한제 적용:</span>
+                <span class="info-value">미적용 (전년도 정보 없음)</span>
+              </div>
+              `}
             </div>
           </div>
 
           ${result.calculationDetails ? `
           <div class="section">
-            <div class="section-title">계산 과정</div>
+            <div class="section-title">세액 계산 과정</div>
             <div class="calculation-details">${result.calculationDetails}</div>
           </div>
           ` : ''}
+
+          <div class="section">
+            <div class="section-title">민원인 설명란</div>
+            <div class="citizen-explanation">
+              <p style="margin: 0 0 15px 0; font-weight: bold;">재산세 계산 안내</p>
+              <p style="margin: 0 0 10px 0;">• 본 계산 결과는 참고용이며, 실제 세액과 다를 수 있습니다.</p>
+              <p style="margin: 0 0 10px 0;">• 정확한 세액은 관할 지방자치단체에 문의하시기 바랍니다.</p>
+              <p style="margin: 0 0 10px 0;">• 재산세는 매년 7월과 9월에 2회 분할 납부합니다.</p>
+              <p style="margin: 0 0 10px 0;">• 지역자원시설세는 9월에 함께 납부합니다.</p>
+              <p style="margin: 0 0 10px 0;">• 납부 기한을 넘기면 가산세가 부과될 수 있습니다.</p>
+              <p style="margin: 0 0 10px 0;">• 세부담상한제는 전년도 대비 세액 증가를 제한하는 제도입니다.</p>
+              <p style="margin: 0 0 10px 0;">• 과표상한제는 전년도 대비 과세표준 증가를 제한하는 제도입니다.</p>
+              <p style="margin: 0;">• 각종 감면 혜택은 신청기한 내에 신청해야 적용됩니다.</p>
+            </div>
+          </div>
 
           <div class="footer">
             <p>본 계산 결과는 참고용이며, 실제 세액과 다를 수 있습니다.</p>
@@ -460,7 +470,7 @@ const PropertyTaxCalculator = () => {
         </div>
 
         <div style="margin-bottom: 25px; padding: 15px; border: 1px solid #ddd; border-radius: 5px;">
-          <div style="font-size: 18px; font-weight: bold; margin-bottom: 15px; color: #2563eb; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px;">부동산 기본 정보</div>
+          <div style="font-size: 18px; font-weight: bold; margin-bottom: 15px; color: #2563eb; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px;">부동산 정보 입력</div>
           <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
             <span style="font-weight: bold; min-width: 150px;">주택 유형:</span>
             <span style="text-align: right;">${propertyData.propertyType}</span>
@@ -560,7 +570,7 @@ const PropertyTaxCalculator = () => {
         ` : ''}
 
         <div style="margin-bottom: 25px; padding: 15px; border: 1px solid #ddd; border-radius: 5px;">
-          <div style="font-size: 18px; font-weight: bold; margin-bottom: 15px; color: #2563eb; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px;">계산 결과</div>
+          <div style="font-size: 18px; font-weight: bold; margin-bottom: 15px; color: #2563eb; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px;">세액 계산 결과</div>
           <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
             <span style="font-weight: bold; min-width: 150px;">재산세 본세:</span>
             <span style="text-align: right;">${formatNumberWithCommas(result.propertyTax)}원</span>
@@ -583,76 +593,93 @@ const PropertyTaxCalculator = () => {
               <span>${formatNumberWithCommas(result.yearTotal)}원</span>
             </div>
           </div>
-        </div>
-
-        <div style="margin-bottom: 25px; padding: 15px; border: 1px solid #ddd; border-radius: 5px;">
-          <div style="font-size: 18px; font-weight: bold; margin-bottom: 15px; color: #2563eb; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px;">세율 및 상한제 정보</div>
-          <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
-            <span style="font-weight: bold; min-width: 150px;">적용 세율:</span>
-            <span style="text-align: right;">${propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000 ? '간이세율 (1세대 1주택 특례)' : '간이세율'}</span>
+          <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb;">
+            <div style="font-weight: bold; margin-bottom: 10px;">납부 일정</div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
+              <span style="font-weight: bold; min-width: 150px;">1기 납부액 (7월):</span>
+              <span style="text-align: right;">${formatNumberWithCommas(result.firstHalfTotal)}원</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
+              <span style="font-weight: bold; min-width: 150px;">2기 납부액 (9월):</span>
+              <span style="text-align: right;">${formatNumberWithCommas(result.secondHalfTotal)}원</span>
+            </div>
           </div>
-          ${result.specialRateAmount ? `
-          <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
-            <span style="font-weight: bold; min-width: 150px;">간이세율 적용금액:</span>
-            <span style="text-align: right;">${formatNumberWithCommas(result.specialRateAmount)}원</span>
-          </div>
-          ` : ''}
-          ${result.standardRateAmount ? `
-          <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
-            <span style="font-weight: bold; min-width: 150px;">표준세율 적용금액:</span>
-            <span style="text-align: right;">${formatNumberWithCommas(result.standardRateAmount)}원</span>
-          </div>
-          ` : ''}
-          ${result.taxBurdenCapAmount > 0 ? `
-          <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
-            <span style="font-weight: bold; min-width: 150px;">세부담상한액:</span>
-            <span style="text-align: right;">${formatNumberWithCommas(result.taxBurdenCapAmount)}원</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
-            <span style="font-weight: bold; min-width: 150px;">세부담상한제 적용:</span>
-            <span style="text-align: right;">${result.propertyTax < result.specialRateAmount ? '적용됨' : '미적용'}</span>
-          </div>
-          ` : `
-          <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
-            <span style="font-weight: bold; min-width: 150px;">세부담상한제 적용:</span>
-            <span style="text-align: right;">미적용 (전년도 정보 없음)</span>
-          </div>
-          `}
-          ${result.taxableStandardCap > 0 ? `
-          <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
-            <span style="font-weight: bold; min-width: 150px;">과표상한액:</span>
-            <span style="text-align: right;">${formatNumberWithCommas(result.taxableStandardCap)}원</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
-            <span style="font-weight: bold; min-width: 150px;">과표상한제 적용:</span>
-            <span style="text-align: right;">${result.taxableStandard < result.taxableStandardBeforeCap ? '적용됨' : '미적용'}</span>
-          </div>
-          ` : `
-          <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
-            <span style="font-weight: bold; min-width: 150px;">과표상한제 적용:</span>
-            <span style="text-align: right;">미적용 (전년도 정보 없음)</span>
-          </div>
-          `}
-        </div>
-
-        <div style="margin-bottom: 25px; padding: 15px; border: 1px solid #ddd; border-radius: 5px;">
-          <div style="font-size: 18px; font-weight: bold; margin-bottom: 15px; color: #2563eb; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px;">납부 일정</div>
-          <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
-            <span style="font-weight: bold; min-width: 150px;">1기 납부액 (7월):</span>
-            <span style="text-align: right;">${formatNumberWithCommas(result.firstHalfTotal)}원</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
-            <span style="font-weight: bold; min-width: 150px;">2기 납부액 (9월):</span>
-            <span style="text-align: right;">${formatNumberWithCommas(result.secondHalfTotal)}원</span>
+          <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb;">
+            <div style="font-weight: bold; margin-bottom: 10px;">세율 및 상한제 정보</div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
+              <span style="font-weight: bold; min-width: 150px;">과세표준:</span>
+              <span style="text-align: right;">${formatNumberWithCommas(result.taxableStandard)}원</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
+              <span style="font-weight: bold; min-width: 150px;">적용 세율:</span>
+              <span style="text-align: right;">${propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000 ? '간이세율 (1세대 1주택 특례)' : '간이세율'}</span>
+            </div>
+            ${result.specialRateAmount ? `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
+              <span style="font-weight: bold; min-width: 150px;">간이세율 적용금액:</span>
+              <span style="text-align: right;">${formatNumberWithCommas(result.specialRateAmount)}원</span>
+            </div>
+            ` : ''}
+            ${result.standardRateAmount ? `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
+              <span style="font-weight: bold; min-width: 150px;">표준세율 적용금액:</span>
+              <span style="text-align: right;">${formatNumberWithCommas(result.standardRateAmount)}원</span>
+            </div>
+            ` : ''}
+            ${result.taxBurdenCapAmount > 0 ? `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
+              <span style="font-weight: bold; min-width: 150px;">세부담상한액:</span>
+              <span style="text-align: right;">${formatNumberWithCommas(result.taxBurdenCapAmount)}원</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
+              <span style="font-weight: bold; min-width: 150px;">세부담상한제 적용:</span>
+              <span style="text-align: right;">${result.propertyTax < result.specialRateAmount ? '적용됨' : '미적용'}</span>
+            </div>
+            ` : `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
+              <span style="font-weight: bold; min-width: 150px;">세부담상한제 적용:</span>
+              <span style="text-align: right;">미적용 (전년도 정보 없음)</span>
+            </div>
+            `}
+            ${result.taxableStandardCap > 0 ? `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
+              <span style="font-weight: bold; min-width: 150px;">과표상한액:</span>
+              <span style="text-align: right;">${formatNumberWithCommas(result.taxableStandardCap)}원</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
+              <span style="font-weight: bold; min-width: 150px;">과표상한제 적용:</span>
+              <span style="text-align: right;">${result.taxableStandard < result.taxableStandardBeforeCap ? '적용됨' : '미적용'}</span>
+            </div>
+            ` : `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
+              <span style="font-weight: bold; min-width: 150px;">과표상한제 적용:</span>
+              <span style="text-align: right;">미적용 (전년도 정보 없음)</span>
+            </div>
+            `}
           </div>
         </div>
 
         ${result.calculationDetails ? `
         <div style="margin-bottom: 25px; padding: 15px; border: 1px solid #ddd; border-radius: 5px;">
-          <div style="font-size: 18px; font-weight: bold; margin-bottom: 15px; color: #2563eb; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px;">계산 과정</div>
+          <div style="font-size: 18px; font-weight: bold; margin-bottom: 15px; color: #2563eb; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px;">세액 계산 과정</div>
           <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; white-space: pre-wrap; font-family: monospace; font-size: 10px; line-height: 1.4;">${result.calculationDetails}</div>
         </div>
         ` : ''}
+
+        <div style="margin-bottom: 25px; padding: 15px; border: 1px solid #ddd; border-radius: 5px;">
+          <div style="font-size: 18px; font-weight: bold; margin-bottom: 15px; color: #2563eb; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px;">민원인 설명란</div>
+          <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; line-height: 1.8;">
+            <p style="margin: 0 0 15px 0; font-weight: bold;">재산세 계산 안내</p>
+            <p style="margin: 0 0 10px 0;">• 본 계산 결과는 참고용이며, 실제 세액과 다를 수 있습니다.</p>
+            <p style="margin: 0 0 10px 0;">• 정확한 세액은 관할 지방자치단체에 문의하시기 바랍니다.</p>
+            <p style="margin: 0 0 10px 0;">• 재산세는 매년 7월과 9월에 2회 분할 납부합니다.</p>
+            <p style="margin: 0 0 10px 0;">• 지역자원시설세는 9월에 함께 납부합니다.</p>
+            <p style="margin: 0 0 10px 0;">• 납부 기한을 넘기면 가산세가 부과될 수 있습니다.</p>
+            <p style="margin: 0 0 10px 0;">• 세부담상한제는 전년도 대비 세액 증가를 제한하는 제도입니다.</p>
+            <p style="margin: 0 0 10px 0;">• 과표상한제는 전년도 대비 과세표준 증가를 제한하는 제도입니다.</p>
+            <p style="margin: 0;">• 각종 감면 혜택은 신청기한 내에 신청해야 적용됩니다.</p>
+          </div>
+        </div>
 
         <div style="margin-top: 40px; text-align: center; font-size: 12px; color: #666; border-top: 1px solid #ddd; padding-top: 20px;">
           <p>본 계산 결과는 참고용이며, 실제 세액과 다를 수 있습니다.</p>
