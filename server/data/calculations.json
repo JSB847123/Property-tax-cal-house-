@@ -1,5 +1,56 @@
 [
   {
+    "id": "1750618734370",
+    "title": "아파트, 다세대, 도시형 생활주택 - 293,000,000원",
+    "savedAt": "2025-06-22T18:58:54.370Z",
+    "propertyData": {
+      "propertyType": "아파트, 다세대, 도시형 생활주택",
+      "publicPrice": 293000000,
+      "homeCount": 1,
+      "ownershipRatio": 100,
+      "isSingleHousehold": true,
+      "regionalResourceTaxStandard": 13047922,
+      "multiUnits": [],
+      "reductionType": "노후연금",
+      "rentalHousingArea": 0,
+      "currentYearReductionRate": 25,
+      "taxBurdenCapRate": 105,
+      "taxStandardCapRate": 5,
+      "previousYear": {
+        "publicPrice": 287000000,
+        "taxableStandard": 123410000,
+        "actualPaidTax": 93410,
+        "marketValueRatio": 43,
+        "regionalResourceTaxStandard": 13598646,
+        "multiUnits": [],
+        "hasOwnershipChange": false,
+        "hasAreaChange": false,
+        "hasUsageChange": false,
+        "urbanAreaTax": 172770
+      }
+    },
+    "result": {
+      "taxableStandard": 125990000,
+      "taxableStandardBeforeCap": 125990000,
+      "taxableStandardCap": 129709500,
+      "propertyTax": 95990,
+      "urbanAreaTax": 176380,
+      "localEducationTax": 19190,
+      "regionalResourceTax": 5920,
+      "firstHalfTotal": 145770,
+      "secondHalfTotal": 148730,
+      "yearTotal": 297480,
+      "calculationDetails": "1. 과세표준 계산\n공시가격 293,000,000원 × 공정시장가액비율 43.0% = 기준 과세표준 125,990,000원\n\n2. 과표상한제 적용\n• 직전연도 과세표준: 123,410,000원\n• 과표상한액: 129,709,500원\n• 최종 과세표준: 125,990,000원 (기준 과세표준과 과표상한액 중 작은 값)\n\n3. 재산세 본세 계산\n적용 세율: 1세대 1주택자 특례세율\n조건: 1세대 1주택 + 주택공시가격 9억원 이하\n세율 구조:\n• 6천만원 이하: 0.05%\n• 6천만원 초과 1.5억원 이하: 30,000원 + 초과분 × 0.1%\n• 1.5억원 초과 3억원 이하: 120,000원 + 초과분 × 0.2%\n• 3억원 초과: 420,000원 + 초과분 × 0.35%\n\n과세표준에 특례세율 적용\n30,000원 + 65,990,000원 × 0.1% = 95,990원\n\n※ 세율 비교\n• 특례세율 적용: 95,990원\n• 표준세율 적용: 158,980원\n• 절약액: 62,990원\n\n소유비율 적용\n95,990원 × 100% = 95,990원\n\n참고: 표준세율 + 노후연금 감면 적용 시\n158,980원 × 100% × (1 - 25%) = 119,230원\n특례세율이 더 유리함 (-23,240원 절약)\n\n세부담상한제 적용\n전년도 납부세액 93,410원 × 105% = 98,080원\n\n세액 비교 및 선택\n과세표준에서 특례세율을 적용한 재산세(소유비율 적용): 95,990원\n세부담상한액: 98,080원\n최종 선택: 95,990원 (더 적은 금액 적용)\n\n최종 재산세\n95,990원\n\n※ 1세대 1주택자 특례세율 적용\n\n※ 1세대 1주택자 특례세율 적용\n\n5. 분기별 세액\n• 상반기 납부액: 145,770원 (각 세목별 50%씩 합산)\n• 하반기 납부액: 145,770원 + 지역자원시설세 50%\n• 연간 총액: 291,560원 + 지역자원시설세",
+      "standardRateAmount": 158980,
+      "specialRateAmount": 95990,
+      "previousYearEquivalent": 93410,
+      "previousYearEquivalentWithReduction": 93410,
+      "taxBurdenCapAmount": 98080,
+      "finalTaxAmount": 95990,
+      "reductionAppliedAmount": 23990
+    }
+  },
+  {
     "id": "1750617282867",
     "title": "단독 및 다중주택 - 744,000,000원",
     "savedAt": "2025-06-22T18:34:42.867Z",

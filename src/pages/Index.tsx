@@ -8,9 +8,6 @@ const Index = () => {
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
             재산세(주택) 계산기
           </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            5단계 세액계산 과정을 통해 정확한 재산세를 계산해보세요
-          </p>
         </div>
         
         <PropertyTaxCalculator />

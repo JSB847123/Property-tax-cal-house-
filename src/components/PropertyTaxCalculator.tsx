@@ -1019,6 +1019,8 @@ const PropertyTaxCalculator = () => {
               border: 1px solid #ddd;
               padding: 12px;
               text-align: left;
+              font-size: 20px;
+              font-weight: bold;
             }
             .comparison-table th {
               background-color: #f1f5f9;
@@ -1028,10 +1030,13 @@ const PropertyTaxCalculator = () => {
             .comparison-table .label {
               font-weight: bold;
               background-color: #f8f9fa;
+              font-size: 20px;
             }
             .comparison-table .number {
               text-align: right;
               font-family: monospace;
+              font-size: 20px;
+              font-weight: bold;
             }
             .change-positive {
               color: #dc2626;
@@ -1995,7 +2000,7 @@ const PropertyTaxCalculator = () => {
 
       {/* 페이지 하단 저장 버튼 */}
       {result && (
-        <div className="fixed bottom-6 right-6 z-50">
+        <div className="fixed bottom-6 right-12 z-50">
           <Button
             onClick={saveCalculation}
             className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-lg"
