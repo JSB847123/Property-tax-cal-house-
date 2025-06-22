@@ -1840,7 +1840,12 @@ const PropertyTaxCalculator = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700">전년도 재산세 본세(원)</Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium text-gray-700">전년도 재산세 본세(원)</Label>
+                  <span className="text-xs text-gray-500 italic">
+                    '일반, 감면세액'만 있으면 '일반, 감면세액 입력' '특례세액'있으면 '특례세액' 입력
+                  </span>
+                </div>
                 <Input
                   type="text"
                   value={propertyData.previousYear.actualPaidTax ? formatNumberWithCommas(propertyData.previousYear.actualPaidTax) : ""}

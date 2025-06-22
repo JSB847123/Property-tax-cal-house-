@@ -1,5 +1,56 @@
 [
   {
+    "id": "1750617282867",
+    "title": "단독 및 다중주택 - 744,000,000원",
+    "savedAt": "2025-06-22T18:34:42.867Z",
+    "propertyData": {
+      "propertyType": "단독 및 다중주택",
+      "publicPrice": 744000000,
+      "homeCount": 1,
+      "ownershipRatio": 50,
+      "isSingleHousehold": false,
+      "regionalResourceTaxStandard": 3543012,
+      "multiUnits": [],
+      "reductionType": "감면 없음",
+      "rentalHousingArea": 0,
+      "currentYearReductionRate": 0,
+      "taxBurdenCapRate": 130,
+      "taxStandardCapRate": 5,
+      "previousYear": {
+        "publicPrice": 732000000,
+        "taxableStandard": 439200000,
+        "actualPaidTax": 563400,
+        "marketValueRatio": 60,
+        "regionalResourceTaxStandard": 3465990,
+        "multiUnits": [],
+        "hasOwnershipChange": false,
+        "hasAreaChange": false,
+        "hasUsageChange": false,
+        "urbanAreaTax": 230580
+      }
+    },
+    "result": {
+      "taxableStandard": 446400000,
+      "taxableStandardBeforeCap": 446400000,
+      "taxableStandardCap": 461520000,
+      "propertyTax": 577800,
+      "urbanAreaTax": 299750,
+      "localEducationTax": 115560,
+      "regionalResourceTax": 1470,
+      "firstHalfTotal": 496550,
+      "secondHalfTotal": 497280,
+      "yearTotal": 994580,
+      "calculationDetails": "1. 과세표준 계산\n공시가격 744,000,000원 × 공정시장가액비율 60.0% = 기준 과세표준 446,400,000원\n\n2. 과표상한제 적용\n• 직전연도 과세표준: 439,200,000원\n• 과표상한액: 461,520,000원\n• 최종 과세표준: 446,400,000원 (기준 과세표준과 과표상한액 중 작은 값)\n\n3. 재산세 본세 계산\n적용 세율\n표준세율 적용\n과세표준에 구간에 따른 세율 (6,000원 + 600만원 초과금액의 1.5/1,000)\n\n과세표준을 적용한 계산\n최종 과세표준 × 세율 × 소유비율\n446,400,000원 × 세율 × 50% = 577,800원\n\n세부담상한제 적용\n전년도 납부세액 563,400원 × 130% = 732,420원\n\n세액 비교 및 선택\n과세표준을 적용한 재산세(소유비율 적용): 577,800원\n세부담상한액: 732,420원\n최종 선택: 577,800원 (더 적은 금액 적용)\n\n최종 재산세\n577,800원\n\n5. 분기별 세액\n• 상반기 납부액: 496,550원 (각 세목별 50%씩 합산)\n• 하반기 납부액: 496,550원 + 지역자원시설세 50%\n• 연간 총액: 993,110원 + 지역자원시설세",
+      "standardRateAmount": 1155600,
+      "specialRateAmount": 1155600,
+      "previousYearEquivalent": 563400,
+      "previousYearEquivalentWithReduction": 563400,
+      "taxBurdenCapAmount": 732420,
+      "finalTaxAmount": 577800,
+      "reductionAppliedAmount": 0
+    }
+  },
+  {
     "id": "1750613589995",
     "title": "아파트, 다세대, 도시형 생활주택 - 293,000,000원",
     "savedAt": "2025-06-22T17:33:09.995Z",
