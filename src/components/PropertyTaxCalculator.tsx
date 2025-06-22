@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,10 +48,22 @@ const PropertyTaxCalculator = () => {
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [isSingleHouseholdSelected, setIsSingleHouseholdSelected] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
-  const [savedCalculations, setSavedCalculations] = useState<SavedCalculation[]>(() => {
+  const [savedCalculations, setSavedCalculations] = useState<SavedCalculation[]>([]);
+  
+  // 임대주택 전용면적 입력을 위한 별도 상태 (문자열로 관리)
+  const [rentalAreaInput, setRentalAreaInput] = useState<string>("");
+
+  // 저장된 계산 로드
+  useEffect(() => {
     const saved = localStorage.getItem('propertyTaxCalculations');
-    return saved ? JSON.parse(saved) : [];
-  });
+    if (saved) {
+      try {
+        setSavedCalculations(JSON.parse(saved));
+      } catch (error) {
+        console.error('저장된 계산을 불러오는 중 오류 발생:', error);
+      }
+    }
+  }, []);
 
   // 저장된 계산을 로컬 스토리지에 저장
   const saveSavedCalculations = (calculations: SavedCalculation[]) => {
@@ -81,7 +93,14 @@ const PropertyTaxCalculator = () => {
   const loadCalculation = (calculation: SavedCalculation) => {
     setPropertyData(calculation.propertyData);
     setResult(calculation.result);
-    setIsSingleHouseholdSelected(true);
+    
+    // 임대주택 전용면적 입력값 복원
+    if (calculation.propertyData.reductionType === "임대주택" && calculation.propertyData.rentalHousingArea) {
+      setRentalAreaInput(calculation.propertyData.rentalHousingArea.toString());
+    } else {
+      setRentalAreaInput("");
+    }
+    
     setErrorMessage("");
   };
 
@@ -287,6 +306,7 @@ const PropertyTaxCalculator = () => {
     setResult(null);
     setIsSingleHouseholdSelected(false);
     setErrorMessage("");
+    setRentalAreaInput("");
   };
 
   const addMultiUnit = () => {
@@ -561,12 +581,19 @@ const PropertyTaxCalculator = () => {
                 <Label className="text-sm font-medium text-gray-700">감면 유형</Label>
                 <Select
                   value={propertyData.reductionType}
-                  onValueChange={(value) => setPropertyData(prev => ({
-                    ...prev,
-                    reductionType: value,
-                    rentalHousingArea: value === "임대주택" ? 0 : 0,
-                    currentYearReductionRate: value === "전세사기 감면" ? 50 : value === "노후연금" ? 25 : 0
-                  }))}
+                  onValueChange={(value) => {
+                    // 감면 유형 변경 시 임대주택 관련 입력값 초기화
+                    if (value !== "임대주택") {
+                      setRentalAreaInput("");
+                    }
+                    
+                    setPropertyData(prev => ({
+                      ...prev,
+                      reductionType: value,
+                      rentalHousingArea: value === "임대주택" ? 0 : 0,
+                      currentYearReductionRate: value === "전세사기 감면" ? 50 : value === "노후연금" ? 25 : 0
+                    }));
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="감면 유형을 선택하세요" />
@@ -586,12 +613,15 @@ const PropertyTaxCalculator = () => {
                   <Input
                     type="text"
                     placeholder="전용면적을 입력하세요 (예: 40.55)"
-                    value={propertyData.rentalHousingArea ? propertyData.rentalHousingArea.toString() : ""}
+                    value={rentalAreaInput}
                     onChange={(e) => {
                       const inputValue = e.target.value;
                       // 숫자와 소수점만 허용하되, 소수점 둘째자리까지만 허용
                       if (inputValue === "" || /^\d*\.?\d{0,2}$/.test(inputValue)) {
-                        const area = inputValue === "" ? 0 : Number(inputValue);
+                        setRentalAreaInput(inputValue);
+                        
+                        // 빈 문자열이 아닐 때만 숫자로 변환하여 PropertyData에 저장
+                        const area = inputValue === "" ? 0 : parseFloat(inputValue) || 0;
                         let reductionRate = 0;
                         
                         if (area > 0 && area <= 40) {
