@@ -581,17 +581,17 @@ const PropertyTaxCalculator = () => {
               </div>
               
               {propertyData.reductionType === "임대주택" && (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-gray-700">전용면적 (㎡)</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.1"
-                      placeholder="전용면적을 입력하세요"
-                      value={propertyData.rentalHousingArea || ""}
-                      onChange={(e) => {
-                        const area = Number(e.target.value);
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">전용면적 (㎡)</Label>
+                  <Input
+                    type="text"
+                    placeholder="전용면적을 입력하세요 (예: 40.5)"
+                    value={propertyData.rentalHousingArea ? propertyData.rentalHousingArea.toString() : ""}
+                    onChange={(e) => {
+                      const inputValue = e.target.value;
+                      // 숫자와 소수점만 허용
+                      if (inputValue === "" || /^\d*\.?\d*$/.test(inputValue)) {
+                        const area = inputValue === "" ? 0 : Number(inputValue);
                         let reductionRate = 0;
                         
                         if (area > 0 && area <= 40) {
@@ -607,51 +607,10 @@ const PropertyTaxCalculator = () => {
                           rentalHousingArea: area,
                           currentYearReductionRate: reductionRate
                         }));
-                      }}
-                      className="text-lg"
-                    />
-                  </div>
-                  
-                  {propertyData.rentalHousingArea && propertyData.rentalHousingArea > 0 && (
-                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium text-blue-800">
-                          {propertyData.rentalHousingArea <= 40 && "전용 40㎡ 이하"}
-                          {propertyData.rentalHousingArea > 40 && propertyData.rentalHousingArea <= 60 && "전용 40㎡초과 60㎡이하"}
-                          {propertyData.rentalHousingArea > 60 && "전용 60㎡초과"}
-                        </span>
-                        <span className="text-lg font-bold text-blue-700">
-                          감면율: {propertyData.currentYearReductionRate}%
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-              
-              {propertyData.reductionType === "전세사기 감면" && (
-                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-blue-800">
-                      전세사기 감면
-                    </span>
-                    <span className="text-lg font-bold text-blue-700">
-                      감면율: 50%
-                    </span>
-                  </div>
-                </div>
-              )}
-              
-              {propertyData.reductionType === "노후연금" && (
-                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-blue-800">
-                      노후연금
-                    </span>
-                    <span className="text-lg font-bold text-blue-700">
-                      감면율: 25%
-                    </span>
-                  </div>
+                      }
+                    }}
+                    className="text-lg"
+                  />
                 </div>
               )}
               
@@ -682,6 +641,50 @@ const PropertyTaxCalculator = () => {
                   }))}
                 />
               </div>
+            </div>
+            
+            {/* 감면 정보 표시 섹션 */}
+            <div className="space-y-4">
+              {propertyData.reductionType === "임대주택" && propertyData.rentalHousingArea && propertyData.rentalHousingArea > 0 && (
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-blue-800">
+                      {propertyData.rentalHousingArea <= 40 && "전용 40㎡ 이하"}
+                      {propertyData.rentalHousingArea > 40 && propertyData.rentalHousingArea <= 60 && "전용 40㎡초과 60㎡이하"}
+                      {propertyData.rentalHousingArea > 60 && "전용 60㎡초과"}
+                    </span>
+                    <span className="text-lg font-bold text-blue-700">
+                      감면율: {propertyData.currentYearReductionRate}%
+                    </span>
+                  </div>
+                </div>
+              )}
+              
+              {propertyData.reductionType === "전세사기 감면" && (
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-blue-800">
+                      전세사기 감면
+                    </span>
+                    <span className="text-lg font-bold text-blue-700">
+                      감면율: 50%
+                    </span>
+                  </div>
+                </div>
+              )}
+              
+              {propertyData.reductionType === "노후연금" && (
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-blue-800">
+                      노후연금
+                    </span>
+                    <span className="text-lg font-bold text-blue-700">
+                      감면율: 25%
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
