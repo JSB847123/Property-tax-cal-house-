@@ -344,7 +344,9 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
   }
   
   // 도시지역분 세부담상한제 적용
-  urbanAreaTax = baseUrbanAreaTax;
+  if (propertyData.propertyType !== "다가구주택") {
+    urbanAreaTax = baseUrbanAreaTax;
+  }
   if (propertyData.previousYear.urbanAreaTax > 0) {
     // 전년도 도시지역분 결정세액 × 세부담상한율
     const urbanAreaTaxCap = Math.floor((propertyData.previousYear.urbanAreaTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10;

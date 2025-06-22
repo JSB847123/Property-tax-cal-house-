@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
-import { Calculator, Home, RotateCcw, Save, Clock, Trash2, Printer } from "lucide-react";
+import { Calculator, Home, RotateCcw, Save, Clock, Trash2, Printer, FileDown } from "lucide-react";
 import CalculationSteps from "./CalculationSteps";
 import ResultsDisplay from "./ResultsDisplay";
 import MultiUnitInputs from "./MultiUnitInputs";
@@ -290,6 +290,154 @@ const PropertyTaxCalculator = () => {
     printWindow.print();
   };
 
+  // PDF 다운로드 기능
+  const handlePdfDownload = async () => {
+    if (!result) {
+      alert("다운로드할 계산 결과가 없습니다. 먼저 계산을 수행해주세요.");
+      return;
+    }
+
+    try {
+      // 동적으로 jsPDF와 html2canvas를 import
+      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+        import('jspdf'),
+        import('html2canvas')
+      ]);
+
+      // PDF 생성을 위한 임시 HTML 요소 생성
+      const tempDiv = document.createElement('div');
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.left = '-9999px';
+      tempDiv.style.top = '0';
+      tempDiv.style.width = '210mm'; // A4 너비
+      tempDiv.style.backgroundColor = 'white';
+      tempDiv.style.padding = '20px';
+      tempDiv.style.fontFamily = 'Malgun Gothic, sans-serif';
+      tempDiv.style.fontSize = '12px';
+      tempDiv.style.lineHeight = '1.6';
+      tempDiv.style.color = '#333';
+
+      tempDiv.innerHTML = `
+        <div style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px;">
+          <div style="font-size: 24px; font-weight: bold; margin-bottom: 10px;">재산세(주택) 계산 결과</div>
+          <div style="font-size: 14px; color: #666;">계산일시: ${new Date().toLocaleString('ko-KR')}</div>
+        </div>
+
+        <div style="margin-bottom: 25px; padding: 15px; border: 1px solid #ddd; border-radius: 5px;">
+          <div style="font-size: 18px; font-weight: bold; margin-bottom: 15px; color: #2563eb; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px;">부동산 기본 정보</div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
+            <span style="font-weight: bold; min-width: 150px;">주택 유형:</span>
+            <span style="text-align: right;">${propertyData.propertyType}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
+            <span style="font-weight: bold; min-width: 150px;">주택공시가격:</span>
+            <span style="text-align: right;">${formatNumberWithCommas(propertyData.publicPrice)}원</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
+            <span style="font-weight: bold; min-width: 150px;">소유비율:</span>
+            <span style="text-align: right;">${propertyData.ownershipRatio}%</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
+            <span style="font-weight: bold; min-width: 150px;">1세대 1주택:</span>
+            <span style="text-align: right;">${propertyData.isSingleHousehold ? '예' : '아니오'}</span>
+          </div>
+          ${propertyData.reductionType !== "감면 없음" ? `
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
+            <span style="font-weight: bold; min-width: 150px;">감면 유형:</span>
+            <span style="text-align: right;">${propertyData.reductionType} (${propertyData.currentYearReductionRate}%)</span>
+          </div>
+          ` : ''}
+        </div>
+
+        <div style="margin-bottom: 25px; padding: 15px; border: 1px solid #ddd; border-radius: 5px;">
+          <div style="font-size: 18px; font-weight: bold; margin-bottom: 15px; color: #2563eb; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px;">계산 결과</div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
+            <span style="font-weight: bold; min-width: 150px;">재산세 본세:</span>
+            <span style="text-align: right;">${formatNumberWithCommas(result.propertyTax)}원</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
+            <span style="font-weight: bold; min-width: 150px;">지역자원시설세:</span>
+            <span style="text-align: right;">${formatNumberWithCommas(result.regionalResourceTax)}원</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
+            <span style="font-weight: bold; min-width: 150px;">지방교육세:</span>
+            <span style="text-align: right;">${formatNumberWithCommas(result.localEducationTax)}원</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
+            <span style="font-weight: bold; min-width: 150px;">도시지역분:</span>
+            <span style="text-align: right;">${formatNumberWithCommas(result.urbanAreaTax)}원</span>
+          </div>
+          <div style="font-size: 16px; font-weight: bold; background-color: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 15px;">
+            <div style="display: flex; justify-content: space-between;">
+              <span>연간 총 세액:</span>
+              <span>${formatNumberWithCommas(result.yearTotal)}원</span>
+            </div>
+          </div>
+        </div>
+
+        ${result.calculationDetails ? `
+        <div style="margin-bottom: 25px; padding: 15px; border: 1px solid #ddd; border-radius: 5px;">
+          <div style="font-size: 18px; font-weight: bold; margin-bottom: 15px; color: #2563eb; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px;">계산 과정</div>
+          <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; white-space: pre-wrap; font-family: monospace; font-size: 10px; line-height: 1.4;">${result.calculationDetails}</div>
+        </div>
+        ` : ''}
+
+        <div style="margin-top: 40px; text-align: center; font-size: 12px; color: #666; border-top: 1px solid #ddd; padding-top: 20px;">
+          <p>본 계산 결과는 참고용이며, 실제 세액과 다를 수 있습니다.</p>
+          <p>정확한 세액은 해당 지방자치단체에 문의하시기 바랍니다.</p>
+        </div>
+      `;
+
+      document.body.appendChild(tempDiv);
+
+      // HTML을 캔버스로 변환
+      const canvas = await html2canvas(tempDiv, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        width: tempDiv.offsetWidth,
+        height: tempDiv.offsetHeight
+      });
+
+      // 임시 요소 제거
+      document.body.removeChild(tempDiv);
+
+      // PDF 생성
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      
+      const imgWidth = 210; // A4 너비 (mm)
+      const pageHeight = 297; // A4 높이 (mm)
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+
+      let position = 0;
+
+      // 첫 페이지 추가
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      // 필요한 경우 추가 페이지 생성
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      // 파일명 생성
+      const fileName = `재산세계산결과_${propertyData.propertyType}_${new Date().toISOString().slice(0, 10)}.pdf`;
+      
+      // PDF 다운로드
+      pdf.save(fileName);
+
+    } catch (error) {
+      console.error('PDF 생성 중 오류 발생:', error);
+      alert('PDF 생성 중 오류가 발생했습니다. 다시 시도해주세요.');
+    }
+  };
+
   // 주택공시가격에 따른 세부담상한율 자동 계산
   const calculateTaxBurdenCapRate = (publicPrice: number): number => {
     if (publicPrice <= 300000000) {
@@ -396,6 +544,15 @@ const PropertyTaxCalculator = () => {
               부동산 정보 입력
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                onClick={handlePdfDownload}
+                variant="secondary"
+                size="sm"
+                className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+              >
+                <FileDown className="w-4 h-4 mr-1" />
+                PDF 다운로드
+              </Button>
               <Button
                 onClick={handlePrint}
                 variant="secondary"
