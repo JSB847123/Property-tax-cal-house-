@@ -14,7 +14,6 @@ export interface PreviousYearData {
   publicPrice: number;
   taxableStandard: number;
   actualPaidTax: number;
-  appliedRate: 'special' | 'standard';
   marketValueRatio: number; // 전년도 공정시장가액비율
   regionalResourceTaxStandard: number;
   multiUnits: PreviousYearMultiUnitData[];

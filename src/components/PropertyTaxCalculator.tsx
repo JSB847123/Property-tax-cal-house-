@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calculator, Home, RotateCcw, Save, Clock, Trash2, Printer, FileDown, BarChart3 } from "lucide-react";
+import { Calculator, Home, RotateCcw, Save, Clock, Trash2, Printer, FileDown, BarChart3, Server, Wifi, WifiOff } from "lucide-react";
 import CalculationSteps from "./CalculationSteps";
 import ResultsDisplay from "./ResultsDisplay";
 import MultiUnitInputs from "./MultiUnitInputs";
@@ -15,6 +15,7 @@ import { PropertyData, CalculationResult, MultiUnitData, PreviousYearMultiUnitDa
 import { calculateMarketValueRatio } from "@/utils/taxCalculations";
 import { formatNumberWithCommas, parseNumberFromInput } from "@/utils/formatUtils";
 import { performTaxCalculation } from "@/utils/mainTaxCalculation";
+import { apiService, checkServerHealth } from "@/services/api";
 
 const PropertyTaxCalculator = () => {
   const initialPropertyData: PropertyData = {
@@ -34,7 +35,6 @@ const PropertyTaxCalculator = () => {
       publicPrice: 0,
       taxableStandard: 0,
       actualPaidTax: 0,
-      appliedRate: 'standard',
       marketValueRatio: 0,
       regionalResourceTaxStandard: 0,
       multiUnits: [],
@@ -56,41 +56,65 @@ const PropertyTaxCalculator = () => {
 
   // 비교 리포트를 위한 선택된 계산들
   const [selectedCalculations, setSelectedCalculations] = useState<string[]>([]);
+  
+  // 서버 연결 상태
+  const [isServerConnected, setIsServerConnected] = useState<boolean>(false);
+  const [isCheckingServer, setIsCheckingServer] = useState<boolean>(false);
 
-  // 저장된 계산 로드
-  useEffect(() => {
-    const saved = localStorage.getItem('propertyTaxCalculations');
-    if (saved) {
-      try {
-        setSavedCalculations(JSON.parse(saved));
-      } catch (error) {
-        console.error('저장된 계산을 불러오는 중 오류 발생:', error);
-      }
+  // 서버 상태 확인
+  const checkServerConnection = async () => {
+    setIsCheckingServer(true);
+    try {
+      await checkServerHealth();
+      setIsServerConnected(true);
+      console.log('✅ 서버 연결 성공');
+    } catch (error) {
+      setIsServerConnected(false);
+      console.warn('⚠️ 서버 연결 실패:', error);
+    } finally {
+      setIsCheckingServer(false);
     }
-  }, []);
-
-  // 저장된 계산을 로컬 스토리지에 저장
-  const saveSavedCalculations = (calculations: SavedCalculation[]) => {
-    localStorage.setItem('propertyTaxCalculations', JSON.stringify(calculations));
-    setSavedCalculations(calculations);
   };
 
-  // 계산 결과 저장
-  const saveCalculation = () => {
+  // 저장된 계산 로드 (API 서버 우선, 실패 시 로컬 스토리지)
+  const loadSavedCalculations = async () => {
+    try {
+      const calculations = await apiService.getCalculations();
+      setSavedCalculations(calculations);
+    } catch (error) {
+      console.warn('계산 결과 로드 실패:', error);
+      // 로컬 스토리지에서 로드는 API 서비스에서 자동으로 처리됨
+    }
+  };
+
+  // 컴포넌트 마운트 시 실행
+  useEffect(() => {
+    const initialize = async () => {
+      await checkServerConnection();
+      await loadSavedCalculations();
+    };
+    
+    initialize();
+  }, []);
+
+  // 계산 결과 저장 (API 서버 우선, 실패 시 로컬 스토리지)
+  const saveCalculation = async () => {
     if (!result) return;
 
     const title = `${propertyData.propertyType} - ${formatNumberWithCommas(propertyData.publicPrice)}원`;
-    const newCalculation: SavedCalculation = {
-      id: Date.now().toString(),
-      title,
-      savedAt: new Date().toLocaleString('ko-KR'),
-      propertyData: { ...propertyData },
-      result: { ...result }
-    };
-
-    // 최근 3개만 유지
-    const updatedCalculations = [newCalculation, ...savedCalculations].slice(0, 3);
-    saveSavedCalculations(updatedCalculations);
+    
+    try {
+      const savedCalculation = await apiService.saveCalculation(title, propertyData, result);
+      
+      // 성공적으로 저장된 경우 상태 업데이트
+      const updatedCalculations = [savedCalculation, ...savedCalculations.filter(c => c.id !== savedCalculation.id)].slice(0, 20);
+      setSavedCalculations(updatedCalculations);
+      
+      console.log('✅ 계산 결과 저장 완료:', savedCalculation.title);
+    } catch (error) {
+      console.error('❌ 계산 결과 저장 실패:', error);
+      setErrorMessage('계산 결과 저장에 실패했습니다.');
+    }
   };
 
   // 저장된 계산 불러오기
@@ -108,10 +132,21 @@ const PropertyTaxCalculator = () => {
     setErrorMessage("");
   };
 
-  // 저장된 계산 삭제
-  const deleteCalculation = (id: string) => {
-    const updatedCalculations = savedCalculations.filter(calc => calc.id !== id);
-    saveSavedCalculations(updatedCalculations);
+  // 저장된 계산 삭제 (API 서버 우선, 실패 시 로컬 스토리지)
+  const deleteCalculation = async (id: string) => {
+    try {
+      const success = await apiService.deleteCalculation(id);
+      if (success) {
+        const updatedCalculations = savedCalculations.filter(calc => calc.id !== id);
+        setSavedCalculations(updatedCalculations);
+        console.log('✅ 계산 결과 삭제 완료');
+      } else {
+        throw new Error('삭제 실패');
+      }
+    } catch (error) {
+      console.error('❌ 계산 결과 삭제 실패:', error);
+      setErrorMessage('계산 결과 삭제에 실패했습니다.');
+    }
   };
 
   // 출력 기능
@@ -289,12 +324,7 @@ const PropertyTaxCalculator = () => {
               <span class="info-value">${formatNumberWithCommas(propertyData.previousYear.urbanAreaTax)}원</span>
             </div>
             ` : ''}
-            ${propertyData.previousYear.appliedRate ? `
-            <div class="info-row">
-              <span class="info-label">전년도 적용세율:</span>
-              <span class="info-value">${propertyData.previousYear.appliedRate === 'special' ? '간이세율' : '표준세율'}</span>
-            </div>
-            ` : ''}
+
             ${propertyData.propertyType === "다가구주택" && propertyData.multiUnits.length > 0 ? `
             <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb;">
               <div style="font-weight: bold; margin-bottom: 10px;">다가구주택 호실별 정보</div>
@@ -546,12 +576,7 @@ const PropertyTaxCalculator = () => {
             <span style="text-align: right;">${formatNumberWithCommas(propertyData.previousYear.urbanAreaTax)}원</span>
           </div>
           ` : ''}
-          ${propertyData.previousYear.appliedRate ? `
-          <div style="display: flex; justify-content: space-between; margin-bottom: 8px; padding: 5px 0;">
-            <span style="font-weight: bold; min-width: 150px;">전년도 적용세율:</span>
-            <span style="text-align: right;">${propertyData.previousYear.appliedRate === 'special' ? '간이세율' : '표준세율'}</span>
-          </div>
-          ` : ''}
+
         </div>
         ` : ''}
 
@@ -1090,11 +1115,7 @@ const PropertyTaxCalculator = () => {
                   <td class="number">${calc1.propertyData.previousYear.actualPaidTax ? formatNumberWithCommas(calc1.propertyData.previousYear.actualPaidTax) + '원' : '미입력'}</td>
                   <td class="number">${calc2.propertyData.previousYear.actualPaidTax ? formatNumberWithCommas(calc2.propertyData.previousYear.actualPaidTax) + '원' : '미입력'}</td>
                 </tr>
-                <tr>
-                  <td class="label">전년도 적용세율</td>
-                  <td>${calc1.propertyData.previousYear.appliedRate === 'special' ? '특례세율' : '표준세율'}</td>
-                  <td>${calc2.propertyData.previousYear.appliedRate === 'special' ? '특례세율' : '표준세율'}</td>
-                </tr>
+
                 <tr>
                   <td class="label">전년도 도시지역분</td>
                   <td class="number">${calc1.propertyData.previousYear.urbanAreaTax ? formatNumberWithCommas(calc1.propertyData.previousYear.urbanAreaTax) + '원' : '미입력'}</td>
@@ -1223,8 +1244,7 @@ const PropertyTaxCalculator = () => {
                   `<li><strong>과표상한율 변동:</strong> ${calc1.propertyData.taxStandardCapRate}% → ${calc2.propertyData.taxStandardCapRate}%</li>` : ''}
                 ${calc1.propertyData.previousYear.actualPaidTax !== calc2.propertyData.previousYear.actualPaidTax ? 
                   `<li><strong>전년도 재산세 본세 변동:</strong> ${calc1.propertyData.previousYear.actualPaidTax ? formatNumberWithCommas(calc1.propertyData.previousYear.actualPaidTax) + '원' : '미입력'} → ${calc2.propertyData.previousYear.actualPaidTax ? formatNumberWithCommas(calc2.propertyData.previousYear.actualPaidTax) + '원' : '미입력'}</li>` : ''}
-                ${calc1.propertyData.previousYear.appliedRate !== calc2.propertyData.previousYear.appliedRate ? 
-                  `<li><strong>전년도 적용세율 변동:</strong> ${calc1.propertyData.previousYear.appliedRate === 'special' ? '특례세율' : '표준세율'} → ${calc2.propertyData.previousYear.appliedRate === 'special' ? '특례세율' : '표준세율'}</li>` : ''}
+
                 ${calc1.propertyData.previousYear.urbanAreaTax !== calc2.propertyData.previousYear.urbanAreaTax ? 
                   `<li><strong>전년도 도시지역분 변동:</strong> ${calc1.propertyData.previousYear.urbanAreaTax ? formatNumberWithCommas(calc1.propertyData.previousYear.urbanAreaTax) + '원' : '미입력'} → ${calc2.propertyData.previousYear.urbanAreaTax ? formatNumberWithCommas(calc2.propertyData.previousYear.urbanAreaTax) + '원' : '미입력'}</li>` : ''}
                 ${(calc1.propertyData.propertyType === "다가구주택" || calc2.propertyData.propertyType === "다가구주택") && calc1.propertyData.multiUnits.length !== calc2.propertyData.multiUnits.length ? 
@@ -1283,6 +1303,34 @@ const PropertyTaxCalculator = () => {
             <div className="flex items-center gap-2">
               <Home className="w-6 h-6" />
               부동산 정보 입력
+              {/* 서버 연결 상태 표시 */}
+              <div className="flex items-center gap-1 ml-4">
+                {isCheckingServer ? (
+                  <div className="flex items-center gap-1 text-yellow-200">
+                    <Server className="w-4 h-4 animate-pulse" />
+                    <span className="text-xs">연결 확인 중...</span>
+                  </div>
+                ) : isServerConnected ? (
+                  <div className="flex items-center gap-1 text-green-200">
+                    <Wifi className="w-4 h-4" />
+                    <span className="text-xs">서버 연결됨</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1 text-orange-200">
+                    <WifiOff className="w-4 h-4" />
+                    <span className="text-xs">로컬 모드</span>
+                  </div>
+                )}
+                <Button
+                  onClick={checkServerConnection}
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 text-white/70 hover:text-white hover:bg-white/10"
+                  title="서버 연결 상태 새로고침"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                </Button>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -1377,22 +1425,29 @@ const PropertyTaxCalculator = () => {
                 <Label htmlFor="publicPrice" className="text-sm font-medium text-gray-700">
                   주택공시가격 (원)
                 </Label>
-                <Input
-                  id="publicPrice"
-                  type="text"
-                  placeholder="예: 300,000,000"
-                  value={propertyData.publicPrice ? formatNumberWithCommas(propertyData.publicPrice) : ""}
-                  onChange={(e) => {
-                    const publicPrice = parseNumberFromInput(e.target.value);
-                    const taxBurdenCapRate = calculateTaxBurdenCapRate(publicPrice);
-                    setPropertyData(prev => ({
-                      ...prev,
-                      publicPrice: publicPrice,
-                      taxBurdenCapRate: taxBurdenCapRate
-                    }));
-                  }}
-                  className="text-lg"
-                />
+                <div className="flex items-center gap-3">
+                  <Input
+                    id="publicPrice"
+                    type="text"
+                    placeholder="예: 300,000,000"
+                    value={propertyData.publicPrice ? formatNumberWithCommas(propertyData.publicPrice) : ""}
+                    onChange={(e) => {
+                      const publicPrice = parseNumberFromInput(e.target.value);
+                      const taxBurdenCapRate = calculateTaxBurdenCapRate(publicPrice);
+                      setPropertyData(prev => ({
+                        ...prev,
+                        publicPrice: publicPrice,
+                        taxBurdenCapRate: taxBurdenCapRate
+                      }));
+                    }}
+                    className="text-lg flex-1"
+                  />
+                  {propertyData.isSingleHousehold && propertyData.publicPrice > 0 && propertyData.publicPrice <= 900000000 && (
+                    <div className="bg-green-100 text-green-800 px-3 py-2 rounded-lg border border-green-200 text-sm font-medium whitespace-nowrap">
+                      특례세율 적용
+                    </div>
+                  )}
+                </div>
               </div>
               <MultiUnitInputs
                 units={propertyData.multiUnits}
@@ -1410,22 +1465,29 @@ const PropertyTaxCalculator = () => {
               <Label htmlFor="publicPrice" className="text-sm font-medium text-gray-700">
                 주택공시가격 (원)
               </Label>
-              <Input
-                id="publicPrice"
-                type="text"
-                placeholder="예: 300,000,000"
-                value={propertyData.publicPrice ? formatNumberWithCommas(propertyData.publicPrice) : ""}
-                onChange={(e) => {
-                  const publicPrice = parseNumberFromInput(e.target.value);
-                  const taxBurdenCapRate = calculateTaxBurdenCapRate(publicPrice);
-                  setPropertyData(prev => ({
-                    ...prev,
-                    publicPrice: publicPrice,
-                    taxBurdenCapRate: taxBurdenCapRate
-                  }));
-                }}
-                className="text-lg"
-              />
+              <div className="flex items-center gap-3">
+                <Input
+                  id="publicPrice"
+                  type="text"
+                  placeholder="예: 300,000,000"
+                  value={propertyData.publicPrice ? formatNumberWithCommas(propertyData.publicPrice) : ""}
+                  onChange={(e) => {
+                    const publicPrice = parseNumberFromInput(e.target.value);
+                    const taxBurdenCapRate = calculateTaxBurdenCapRate(publicPrice);
+                    setPropertyData(prev => ({
+                      ...prev,
+                      publicPrice: publicPrice,
+                      taxBurdenCapRate: taxBurdenCapRate
+                    }));
+                  }}
+                  className="text-lg flex-1"
+                />
+                {propertyData.isSingleHousehold && propertyData.publicPrice > 0 && propertyData.publicPrice <= 900000000 && (
+                  <div className="bg-green-100 text-green-800 px-3 py-2 rounded-lg border border-green-200 text-sm font-medium whitespace-nowrap">
+                    특례세율 적용
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -1716,7 +1778,7 @@ const PropertyTaxCalculator = () => {
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-gray-700">전년도 재산세 본세(원)</Label>
                 <Input
@@ -1730,28 +1792,6 @@ const PropertyTaxCalculator = () => {
                     }
                   }))}
                 />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700">전년도 적용세율</Label>
-                <Select
-                  value={propertyData.previousYear.appliedRate}
-                  onValueChange={(value: 'special' | 'standard') => setPropertyData(prev => ({
-                    ...prev,
-                    previousYear: {
-                      ...prev.previousYear,
-                      appliedRate: value
-                    }
-                  }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="special">특례세율</SelectItem>
-                    <SelectItem value="standard">표준세율</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
 
               <div className="space-y-2">
