@@ -404,7 +404,7 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
             </div>
 
             <div className="text-center p-4 bg-blue-50 rounded-lg">
-              <span className="text-lg text-blue-600 font-bold">
+              <span className="text-2xl font-bold" style={{color: '#033495'}}>
                 (분기별 납부액: {formatCurrency(getQuarterlyPayment())}원)
               </span>
             </div>
