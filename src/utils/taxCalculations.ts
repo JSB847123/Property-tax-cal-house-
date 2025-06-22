@@ -170,3 +170,14 @@ export const calculatePreviousYearEquivalent = (
     withReduction: previousCalculatedTax
   };
 };
+
+// 1세대 1주택 특례세율 계산
+export const calculateSpecialRatePropertyTax = (taxableStandard: number): number => {
+  if (taxableStandard <= 60000000) {
+    // 6천만원 이하: 과세표준 × 0.1% 
+    return taxableStandard * 0.001;
+  } else {
+    // 6천만원 초과: 3만원 + (과세표준 - 6천만원) × 0.1%
+    return 30000 + (taxableStandard - 60000000) * 0.001;
+  }
+};

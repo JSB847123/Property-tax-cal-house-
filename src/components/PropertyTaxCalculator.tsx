@@ -1611,6 +1611,13 @@ const PropertyTaxCalculator = () => {
                       감면율: 25%
                     </span>
                   </div>
+                  {!propertyData.isSingleHousehold && (
+                    <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-sm font-medium text-red-600">
+                        ⚠️ 노후연금 감면은 1세대 1주택만 가능합니다. 확인하십시오.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
