@@ -741,9 +741,9 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                     regionalBaseTaxAmount = 49100 + (fullOwnershipRegionalStandard - 64000000) * 0.0012;
                   }
                   
-                  // 소유비율 적용 (표시용 반올림된 값 사용)
-                  const roundedRegionalBaseTaxAmount = Math.round(regionalBaseTaxAmount);
-                  const regionalTaxAfterOwnership = roundedRegionalBaseTaxAmount * (propertyData.ownershipRatio / 100);
+                  // 소유비율 적용 (표시용 내림된 값 사용)
+                  const flooredRegionalBaseTaxAmount = Math.floor(regionalBaseTaxAmount);
+                  const regionalTaxAfterOwnership = flooredRegionalBaseTaxAmount * (propertyData.ownershipRatio / 100);
                   // 10원 미만 절사 적용
                   const regionalTaxAfterRounding = Math.floor(regionalTaxAfterOwnership / 10) * 10;
                   let regionalTaxAfterProcessing = regionalTaxAfterRounding;
@@ -751,9 +751,9 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                   // 디버깅용
                   console.log('지역자원시설세 표시 디버그:', {
                     regionalBaseTaxAmount,
-                    roundedRegionalBaseTaxAmount,
+                    flooredRegionalBaseTaxAmount,
                     ownershipRatio: propertyData.ownershipRatio,
-                    calculation: `${roundedRegionalBaseTaxAmount} × ${propertyData.ownershipRatio}% = ${regionalTaxAfterOwnership}`,
+                    calculation: `${flooredRegionalBaseTaxAmount} × ${propertyData.ownershipRatio}% = ${regionalTaxAfterOwnership}`,
                     regionalTaxAfterRounding,
                     fullOwnershipRegionalStandard,
                     regionalResourceTaxStandard
@@ -779,13 +779,13 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                       <div className="bg-cyan-50 p-4 rounded-lg border border-cyan-200">
                         <span className="text-sm text-gray-600 block mb-1">구간별 세율 적용 (100% 기준)</span>
                         <p className="text-gray-700">{regionalTaxRateDescription}</p>
-                        <p className="text-gray-700">세액 (100% 기준): {roundedRegionalBaseTaxAmount}원</p>
+                        <p className="text-gray-700">세액 (100% 기준): {regionalBaseTaxAmount.toFixed(2)}원 → 내림: {flooredRegionalBaseTaxAmount}원</p>
                       </div>
                       
                       <div className="bg-cyan-50 p-4 rounded-lg border border-cyan-200">
                         <span className="text-sm text-gray-600 block mb-1">소유비율 적용</span>
                         <p className="text-gray-700">
-                          {roundedRegionalBaseTaxAmount}원 × {propertyData.ownershipRatio}% = {regionalTaxAfterOwnership.toFixed(4)}원
+                          {flooredRegionalBaseTaxAmount}원 × {propertyData.ownershipRatio}% = {regionalTaxAfterOwnership.toFixed(4)}원
                         </p>
                       </div>
                       
