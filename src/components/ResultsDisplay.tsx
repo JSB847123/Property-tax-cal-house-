@@ -116,6 +116,12 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
     // 감면 적용 (재산세 본세에만)
     if (propertyData.reductionType === "임대주택" && propertyData.currentYearReductionRate > 0) {
       explanation += `- 임대주택 감면 적용 (재산세 본세에만): 감면율 ${propertyData.currentYearReductionRate}%\n`;
+      if (propertyData.rentalHousingArea) {
+        explanation += `- 전용면적: ${propertyData.rentalHousingArea}㎡\n`;
+        if (propertyData.rentalHousingArea > 60) {
+          explanation += `- 60㎡ 초과로 재산세 본세만 감면 적용 (도시지역분 감면 제외)\n`;
+        }
+      }
     } else if ((propertyData.reductionType === "전세사기 감면" || propertyData.reductionType === "노후연금") && propertyData.currentYearReductionRate > 0) {
       explanation += `- ${propertyData.reductionType} 적용 (재산세 본세에만): 감면율 ${propertyData.currentYearReductionRate}%\n`;
     }
@@ -137,7 +143,11 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
     }
     
     if (propertyData.reductionType === "임대주택" && propertyData.currentYearReductionRate > 0) {
-      explanation += `- 도시지역분은 임대주택 감면 적용 대상이 아님\n`;
+      if (propertyData.rentalHousingArea && propertyData.rentalHousingArea > 60) {
+        explanation += `- 임대주택 60㎡ 초과로 도시지역분 감면 적용 안됨\n`;
+      } else {
+        explanation += `- 임대주택 60㎡ 이하로 도시지역분 감면 적용됨\n`;
+      }
     } else if ((propertyData.reductionType === "전세사기 감면" || propertyData.reductionType === "노후연금") && propertyData.currentYearReductionRate > 0) {
       explanation += `- 도시지역분은 ${propertyData.reductionType} 적용 대상이 아님\n`;
     }
@@ -702,9 +712,23 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                     regionalBaseTaxAmount = 49100 + (fullOwnershipRegionalStandard - 64000000) * 0.0012;
                   }
                   
-                  // 소유비율 적용
-                  const regionalTaxAfterOwnership = regionalBaseTaxAmount * (propertyData.ownershipRatio / 100);
-                  let regionalTaxAfterProcessing = regionalTaxAfterOwnership;
+                  // 소유비율 적용 (표시용 반올림된 값 사용)
+                  const roundedRegionalBaseTaxAmount = Math.round(regionalBaseTaxAmount);
+                  const regionalTaxAfterOwnership = roundedRegionalBaseTaxAmount * (propertyData.ownershipRatio / 100);
+                  // 10원 미만 절사 적용
+                  const regionalTaxAfterRounding = Math.floor(regionalTaxAfterOwnership / 10) * 10;
+                  let regionalTaxAfterProcessing = regionalTaxAfterRounding;
+                  
+                  // 디버깅용
+                  console.log('지역자원시설세 표시 디버그:', {
+                    regionalBaseTaxAmount,
+                    roundedRegionalBaseTaxAmount,
+                    ownershipRatio: propertyData.ownershipRatio,
+                    calculation: `${roundedRegionalBaseTaxAmount} × ${propertyData.ownershipRatio}% = ${regionalTaxAfterOwnership}`,
+                    regionalTaxAfterRounding,
+                    fullOwnershipRegionalStandard,
+                    regionalResourceTaxStandard
+                  });
                   
                   return (
                     <>
@@ -726,13 +750,20 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                       <div className="bg-cyan-50 p-4 rounded-lg border border-cyan-200">
                         <span className="text-sm text-gray-600 block mb-1">구간별 세율 적용 (100% 기준)</span>
                         <p className="text-gray-700">{regionalTaxRateDescription}</p>
-                        <p className="text-gray-700">세액 (100% 기준): {formatCurrency(regionalBaseTaxAmount)}원</p>
+                        <p className="text-gray-700">세액 (100% 기준): {roundedRegionalBaseTaxAmount}원</p>
                       </div>
                       
                       <div className="bg-cyan-50 p-4 rounded-lg border border-cyan-200">
                         <span className="text-sm text-gray-600 block mb-1">소유비율 적용</span>
                         <p className="text-gray-700">
-                          {formatCurrency(regionalBaseTaxAmount)}원 × {propertyData.ownershipRatio}% = {formatCurrency(regionalTaxAfterOwnership)}원
+                          {roundedRegionalBaseTaxAmount}원 × {propertyData.ownershipRatio}% = {regionalTaxAfterOwnership.toFixed(4)}원
+                        </p>
+                      </div>
+                      
+                      <div className="bg-cyan-50 p-4 rounded-lg border border-cyan-200">
+                        <span className="text-sm text-gray-600 block mb-1">10원 미만 절사</span>
+                        <p className="text-gray-700">
+                          {formatCurrency(regionalTaxAfterRounding)}원
                         </p>
                       </div>
                       
@@ -748,7 +779,7 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
 
                       
                       <div className="bg-cyan-100 p-4 rounded-lg border border-cyan-300">
-                        <span className="text-sm text-gray-600 block mb-1">최종 지역자원시설세 (10원 미만 절사)</span>
+                        <span className="text-sm text-gray-600 block mb-1">최종 지역자원시설세</span>
                         <p className="font-bold text-gray-800 text-lg">
                           {formatCurrency(result.regionalResourceTax)}원
                           {result.regionalResourceTax < 1000 && " (소액 징수면제 적용)"}
