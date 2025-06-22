@@ -585,12 +585,12 @@ const PropertyTaxCalculator = () => {
                   <Label className="text-sm font-medium text-gray-700">전용면적 (㎡)</Label>
                   <Input
                     type="text"
-                    placeholder="전용면적을 입력하세요 (예: 40.5)"
+                    placeholder="전용면적을 입력하세요 (예: 40.55)"
                     value={propertyData.rentalHousingArea ? propertyData.rentalHousingArea.toString() : ""}
                     onChange={(e) => {
                       const inputValue = e.target.value;
-                      // 숫자와 소수점만 허용
-                      if (inputValue === "" || /^\d*\.?\d*$/.test(inputValue)) {
+                      // 숫자와 소수점만 허용하되, 소수점 둘째자리까지만 허용
+                      if (inputValue === "" || /^\d*\.?\d{0,2}$/.test(inputValue)) {
                         const area = inputValue === "" ? 0 : Number(inputValue);
                         let reductionRate = 0;
                         
