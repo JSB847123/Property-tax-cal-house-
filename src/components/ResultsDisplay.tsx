@@ -20,18 +20,18 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
   };
 
   const getQuarterlyPayment = (): number => {
-    // 각 세목별로 1/2씩 계산해서 합산
+    // 각 세목별로 1/2씩 계산해서 합산 (지역자원시설세는 1세대 1주택 특례 없음)
     const propertyTaxHalf = Math.floor((result.propertyTax * 0.5) / 10) * 10;
     const urbanAreaTaxHalf = Math.floor((result.urbanAreaTax * 0.5) / 10) * 10;
     const localEducationTaxHalf = Math.floor((result.localEducationTax * 0.5) / 10) * 10;
-    const regionalResourceTaxHalf = Math.floor((result.regionalResourceTax * 0.5) / 10) * 10;
     
-    return propertyTaxHalf + urbanAreaTaxHalf + localEducationTaxHalf + regionalResourceTaxHalf;
+    return propertyTaxHalf + urbanAreaTaxHalf + localEducationTaxHalf;
   };
 
   // 민원인 설명란을 위한 상세 계산 과정 생성
   const generateDetailedExplanation = (): string => {
     let explanation = "■ 재산세 계산 과정 상세 설명\n\n";
+    let regionalTaxAfterProcessing = 0; // 지역자원시설세 최종 계산값을 저장할 변수
     
     // 1. 기본 정보
     explanation += "1. 기본 정보\n";
@@ -80,82 +80,118 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
     // 3. 재산세 본세 계산
     explanation += "3. 재산세 본세 계산\n";
     
-    // 1세대 1주택 특례세율 적용 여부 확인
-    const isSpecialRateApplicable = propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000 && propertyData.propertyType !== "다가구주택";
-    
-    if (isSpecialRateApplicable) {
-      explanation += `- 적용 세율: 1세대 1주택자 특례세율\n`;
-      explanation += `- 조건: 1세대 1주택 + 주택공시가격 9억원 이하\n`;
-      explanation += `- 세율 구조:\n`;
-      explanation += `  • 6천만원 이하: 0.05%\n`;
-      explanation += `  • 6천만원 초과 1.5억원 이하: 30,000원 + 초과분 × 0.1%\n`;
-      explanation += `  • 1.5억원 초과 3억원 이하: 120,000원 + 초과분 × 0.2%\n`;
-      explanation += `  • 3억원 초과: 420,000원 + 초과분 × 0.35%\n`;
+    // 다가구주택의 경우 mainTaxCalculation.ts에서 생성된 상세 계산 과정 사용
+    if (propertyData.propertyType === "다가구주택") {
+      // calculationDetails에서 재산세 본세 계산 부분만 추출
+      const calculationLines = result.calculationDetails.split('\n');
+      let capturing = false;
+      let capturedLines: string[] = [];
       
-      // 특례세율 계산 공식 표시
-      if (result.taxableStandard <= 60000000) {
-        explanation += `- 과세표준에 특례세율 적용: ${formatCurrency(result.taxableStandard)}원 × 0.05% = ${formatCurrency(result.specialRateAmount)}원\n`;
-      } else if (result.taxableStandard <= 150000000) {
-        const excessAmount = result.taxableStandard - 60000000;
-        explanation += `- 과세표준에 특례세율 적용: 30,000원 + ${formatCurrency(excessAmount)}원 × 0.1% = ${formatCurrency(result.specialRateAmount)}원\n`;
-      } else if (result.taxableStandard <= 300000000) {
-        const excessAmount = result.taxableStandard - 150000000;
-        explanation += `- 과세표준에 특례세율 적용: 120,000원 + ${formatCurrency(excessAmount)}원 × 0.2% = ${formatCurrency(result.specialRateAmount)}원\n`;
-      } else {
-        const excessAmount = result.taxableStandard - 300000000;
-        explanation += `- 과세표준에 특례세율 적용: 420,000원 + ${formatCurrency(excessAmount)}원 × 0.35% = ${formatCurrency(result.specialRateAmount)}원\n`;
-      }
-      
-      // 표준세율과 비교 표시
-      explanation += `\n※ 세율 비교\n`;
-      explanation += `• 특례세율 적용: ${formatCurrency(result.specialRateAmount)}원\n`;
-      explanation += `• 표준세율 적용: ${formatCurrency(result.standardRateAmount)}원\n`;
-      explanation += `• 절약액: ${formatCurrency(result.standardRateAmount - result.specialRateAmount)}원\n\n`;
-      
-      explanation += `- 소유비율 적용: ${formatCurrency(result.specialRateAmount)}원 × ${propertyData.ownershipRatio}% = ${formatCurrency(Math.floor((result.specialRateAmount * (propertyData.ownershipRatio / 100)) / 10) * 10)}원\n`;
-    } else {
-      let taxRateDescription = "";
-      
-      // 표준세율 표기
-      if (result.taxableStandard <= 6000000) {
-        taxRateDescription = "과세표준 600만원 이하: 1.0/1,000";
-      } else if (result.taxableStandard <= 150000000) {
-        taxRateDescription = "과세표준에 구간에 따른 세율 (6,000원 + 600만원 초과금액의 1.5/1,000)";
-      } else if (result.taxableStandard <= 300000000) {
-        taxRateDescription = "과세표준에 구간에 따른 세율 (216,000원 + 1억5천만원 초과금액의 2.5/1,000)";
-      } else {
-        taxRateDescription = "과세표준 3억원 초과: 57만원 + 3억원 초과금액의 4/1,000";
-      }
-      
-      explanation += `- 적용 세율: 표준세율\n`;
-      explanation += `- 세율 구조: ${taxRateDescription}\n`;
-      explanation += `- 과세표준을 적용한 계산: ${formatCurrency(result.taxableStandard)}원 × 세율 × ${propertyData.ownershipRatio}% = ${formatCurrency(result.propertyTax)}원\n`;
-      explanation += `  ※ 기본 세액(소유비율 적용 전): ${formatCurrency(result.standardRateAmount)}원\n`;
-    }
-    
-    // 세부담상한제 적용 여부
-    if (propertyData.previousYear.actualPaidTax > 0) {
-      const taxBurdenCapAmount = Math.floor((propertyData.previousYear.actualPaidTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10;
-      explanation += `- 세부담상한제 적용: 전년도 납부세액 ${formatCurrency(propertyData.previousYear.actualPaidTax)}원 × ${propertyData.taxBurdenCapRate}% = ${formatCurrency(taxBurdenCapAmount)}원\n`;
-      explanation += `- 최종 재산세: ${formatCurrency(result.propertyTax)}원 (세율 적용액과 세부담상한액 중 작은 값)\n`;
-    } else {
-      explanation += `- 최종 재산세: ${formatCurrency(result.propertyTax)}원\n`;
-    }
-    
-    // 감면 적용 (재산세 본세에만)
-    if (propertyData.reductionType === "임대주택" && propertyData.currentYearReductionRate > 0) {
-      explanation += `- 임대주택 감면 적용 (재산세 본세에만): 감면율 ${propertyData.currentYearReductionRate}%\n`;
-      if (propertyData.rentalHousingArea) {
-        explanation += `- 전용면적: ${propertyData.rentalHousingArea}㎡\n`;
-        if (propertyData.rentalHousingArea > 60) {
-          explanation += `- 60㎡ 초과로 재산세 본세만 감면 적용 (도시지역분 감면 제외)\n`;
+      for (const line of calculationLines) {
+        if (line.includes('2. 재산세 본세 계산')) {
+          capturing = true;
+          capturedLines.push(line.substring(line.indexOf('2.')));
+          continue;
+        }
+        if (capturing) {
+          if (line.includes('3. 소유비율 적용') || line.includes('4.') || line.includes('5.')) {
+            break;
+          }
+          capturedLines.push(line);
         }
       }
-    } else if ((propertyData.reductionType === "전세사기 감면" || propertyData.reductionType === "노후연금") && propertyData.currentYearReductionRate > 0) {
-      explanation += `- ${propertyData.reductionType} 적용 (재산세 본세에만): 감면율 ${propertyData.currentYearReductionRate}%\n`;
-    }
+      
+      if (capturedLines.length > 0) {
+        explanation += capturedLines.join('\n').replace(/^2\. /, '- ') + '\n';
+      } else {
+        // fallback: 기본 다가구주택 설명
+        explanation += `- 총 ${propertyData.multiUnits.length}개 구의 각 구별 과세표준에 해당하는 세율을 적용하여 계산\n`;
+        propertyData.multiUnits.forEach((unit, index) => {
+          explanation += `  ${index + 1}구: 과세표준 ${formatCurrency(unit.taxableStandard)}원\n`;
+        });
+        explanation += `- 최종 재산세 본세: ${formatCurrency(result.propertyTax)}원\n`;
+      }
+      
+      explanation += "\n";
+    } else {
+      // 일반주택의 경우 기존 로직 유지
+      // 1세대 1주택 특례세율 적용 여부 확인
+      const isSpecialRateApplicable = propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000;
     
-    explanation += "\n";
+      if (isSpecialRateApplicable) {
+        explanation += `- 적용 세율: 1세대 1주택자 특례세율\n`;
+        explanation += `- 조건: 1세대 1주택 + 주택공시가격 9억원 이하\n`;
+        explanation += `- 세율 구조:\n`;
+        explanation += `  • 6천만원 이하: 0.05%\n`;
+        explanation += `  • 6천만원 초과 1.5억원 이하: 30,000원 + 초과분 × 0.1%\n`;
+        explanation += `  • 1.5억원 초과 3억원 이하: 120,000원 + 초과분 × 0.2%\n`;
+        explanation += `  • 3억원 초과: 420,000원 + 초과분 × 0.35%\n`;
+        
+        // 특례세율 계산 공식 표시
+        if (result.taxableStandard <= 60000000) {
+          explanation += `- 과세표준에 특례세율 적용: ${formatCurrency(result.taxableStandard)}원 × 0.05% = ${formatCurrency(result.specialRateAmount)}원\n`;
+        } else if (result.taxableStandard <= 150000000) {
+          const excessAmount = result.taxableStandard - 60000000;
+          explanation += `- 과세표준에 특례세율 적용: 30,000원 + ${formatCurrency(excessAmount)}원 × 0.1% = ${formatCurrency(result.specialRateAmount)}원\n`;
+        } else if (result.taxableStandard <= 300000000) {
+          const excessAmount = result.taxableStandard - 150000000;
+          explanation += `- 과세표준에 특례세율 적용: 120,000원 + ${formatCurrency(excessAmount)}원 × 0.2% = ${formatCurrency(result.specialRateAmount)}원\n`;
+        } else {
+          const excessAmount = result.taxableStandard - 300000000;
+          explanation += `- 과세표준에 특례세율 적용: 420,000원 + ${formatCurrency(excessAmount)}원 × 0.35% = ${formatCurrency(result.specialRateAmount)}원\n`;
+        }
+        
+        // 표준세율과 비교 표시
+        explanation += `\n※ 세율 비교\n`;
+        explanation += `• 특례세율 적용: ${formatCurrency(result.specialRateAmount)}원\n`;
+        explanation += `• 표준세율 적용: ${formatCurrency(result.standardRateAmount)}원\n`;
+        explanation += `• 절약액: ${formatCurrency(result.standardRateAmount - result.specialRateAmount)}원\n\n`;
+        
+        explanation += `- 소유비율 적용: ${formatCurrency(result.specialRateAmount)}원 × ${propertyData.ownershipRatio}% = ${formatCurrency(Math.floor((result.specialRateAmount * (propertyData.ownershipRatio / 100)) / 10) * 10)}원\n`;
+      } else {
+        let taxRateDescription = "";
+        
+        // 표준세율 표기
+        if (result.taxableStandard <= 6000000) {
+          taxRateDescription = "과세표준 600만원 이하: 1.0/1,000";
+        } else if (result.taxableStandard <= 150000000) {
+          taxRateDescription = "과세표준에 구간에 따른 세율 (6,000원 + 600만원 초과금액의 1.5/1,000)";
+        } else if (result.taxableStandard <= 300000000) {
+          taxRateDescription = "과세표준에 구간에 따른 세율 (216,000원 + 1억5천만원 초과금액의 2.5/1,000)";
+        } else {
+          taxRateDescription = "과세표준 3억원 초과: 57만원 + 3억원 초과금액의 4/1,000";
+        }
+        
+        explanation += `- 적용 세율: 표준세율\n`;
+        explanation += `- 세율 구조: ${taxRateDescription}\n`;
+        explanation += `- 과세표준을 적용한 계산: ${formatCurrency(result.taxableStandard)}원 × 세율 × ${propertyData.ownershipRatio}% = ${formatCurrency(result.propertyTax)}원\n`;
+        explanation += `  ※ 기본 세액(소유비율 적용 전): ${formatCurrency(result.standardRateAmount)}원\n`;
+      }
+    
+      // 세부담상한제 적용 여부
+      if (propertyData.previousYear.actualPaidTax > 0) {
+        const taxBurdenCapAmount = Math.floor((propertyData.previousYear.actualPaidTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10;
+        explanation += `- 세부담상한제 적용: 전년도 납부세액 ${formatCurrency(propertyData.previousYear.actualPaidTax)}원 × ${propertyData.taxBurdenCapRate}% = ${formatCurrency(taxBurdenCapAmount)}원\n`;
+        explanation += `- 최종 재산세: ${formatCurrency(result.propertyTax)}원 (세율 적용액과 세부담상한액 중 작은 값)\n`;
+      } else {
+        explanation += `- 최종 재산세: ${formatCurrency(result.propertyTax)}원\n`;
+      }
+      
+      // 감면 적용 (재산세 본세에만)
+      if (propertyData.reductionType === "임대주택" && propertyData.currentYearReductionRate > 0) {
+        explanation += `- 임대주택 감면 적용 (재산세 본세에만): 감면율 ${propertyData.currentYearReductionRate}%\n`;
+        if (propertyData.rentalHousingArea) {
+          explanation += `- 전용면적: ${propertyData.rentalHousingArea}㎡\n`;
+          if (propertyData.rentalHousingArea > 60) {
+            explanation += `- 60㎡ 초과로 재산세 본세만 감면 적용 (도시지역분 감면 제외)\n`;
+          }
+        }
+      } else if ((propertyData.reductionType === "전세사기 감면" || propertyData.reductionType === "노후연금") && propertyData.currentYearReductionRate > 0) {
+        explanation += `- ${propertyData.reductionType} 적용 (재산세 본세에만): 감면율 ${propertyData.currentYearReductionRate}%\n`;
+      }
+      
+      explanation += "\n";
+    }
     
     // 4. 도시지역분 계산
     explanation += "4. 도시지역분 계산\n";
@@ -195,65 +231,111 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
     
     // 6. 지역자원시설세 계산
     explanation += "6. 지역자원시설세 계산\n";
-    const regionalResourceTaxStandard = propertyData.regionalResourceTaxStandard || result.taxableStandard;
-    explanation += `- 지역자원시설세 과세표준 (소유비율 ${propertyData.ownershipRatio}%): ${formatCurrency(regionalResourceTaxStandard)}원\n`;
     
-    if (propertyData.regionalResourceTaxStandard) {
-      explanation += `  (입력된 지역자원시설세 과세표준 적용)\n`;
+    if (propertyData.propertyType === "다가구주택") {
+      // 다가구주택의 경우 각 구별 과세표준과 세율 적용을 표시
+      explanation += "- 지역자원시설세 과세표준\n";
+      
+      let totalRegionalTax = 0;
+      const unitRegionalDetails: Array<{unit: number, standard: number, rate: number, tax: number}> = [];
+      
+      propertyData.multiUnits.forEach((unit, index) => {
+        const unitNumber = index + 1;
+        const unitStandard = unit.regionalResourceTaxStandard || unit.taxableStandard;
+        
+        // 각 구별 지역자원시설세 과세표준에 맞는 세율 적용 (새로운 6단계 구간)
+        let unitRegionalTax = 0;
+        if (unitStandard <= 6000000) {
+          unitRegionalTax = unitStandard * 0.0004;
+        } else if (unitStandard <= 13000000) {
+          unitRegionalTax = 2400 + (unitStandard - 6000000) * 0.0005;
+        } else if (unitStandard <= 26000000) {
+          unitRegionalTax = 5900 + (unitStandard - 13000000) * 0.0006;
+        } else if (unitStandard <= 39000000) {
+          unitRegionalTax = 13700 + (unitStandard - 26000000) * 0.0008;
+        } else if (unitStandard <= 64000000) {
+          unitRegionalTax = 24100 + (unitStandard - 39000000) * 0.001;
+        } else {
+          unitRegionalTax = 49100 + (unitStandard - 64000000) * 0.0012;
+        }
+        
+        explanation += `${unitNumber}구: ${formatCurrency(unitStandard)}원\n`;
+        totalRegionalTax += unitRegionalTax;
+        unitRegionalDetails.push({
+          unit: unitNumber,
+          standard: unitStandard,
+          rate: unitStandard <= 6000000 ? 0.0004 : 0, // 간단히 첫 번째 구간만 표시용
+          tax: unitRegionalTax
+        });
+      });
+      
+      explanation += "\n- 세율 적용 (100% 기준):\n";
+      unitRegionalDetails.forEach(detail => {
+        explanation += `${detail.unit}구: ${formatCurrency(detail.standard)}원 × 10,000분의 4 = ${detail.tax.toFixed(4)}\n`;
+      });
+      
+      explanation += `\n합계: ${totalRegionalTax.toFixed(4)}\n`;
+      
+      // 지역자원시설세는 1세대 1주택 특례 적용 없음
+      regionalTaxAfterProcessing = totalRegionalTax;
+      
     } else {
-      explanation += `  (재산세 과세표준과 동일 적용)\n`;
-    }
-    
-    // 소유비율 100% 기준 과세표준으로 역산
-    const fullOwnershipRegionalStandard = regionalResourceTaxStandard / (propertyData.ownershipRatio / 100);
-    explanation += `- 소유비율 100% 기준 과세표준: ${formatCurrency(regionalResourceTaxStandard)} ÷ ${propertyData.ownershipRatio}% = ${formatCurrency(fullOwnershipRegionalStandard)}원\n`;
-    
-    // 구간별 세율 적용 설명 (100% 기준으로)
-    let regionalTaxDesc = "";
-    let regionalBaseTax = 0;
-    
-    if (fullOwnershipRegionalStandard <= 6000000) {
-      regionalTaxDesc = "600만원 이하: 과세표준 × 4/10,000";
-      regionalBaseTax = fullOwnershipRegionalStandard * 0.0004;
-    } else if (fullOwnershipRegionalStandard <= 13000000) {
-      regionalTaxDesc = "600만원 초과 ~ 1,300만원 이하: 2,400원 + (600만원 초과금액 × 5/10,000)";
-      regionalBaseTax = 2400 + (fullOwnershipRegionalStandard - 6000000) * 0.0005;
-    } else if (fullOwnershipRegionalStandard <= 26000000) {
-      regionalTaxDesc = "1,300만원 초과 ~ 2,600만원 이하: 5,900원 + (1,300만원 초과금액 × 6/10,000)";
-      regionalBaseTax = 5900 + (fullOwnershipRegionalStandard - 13000000) * 0.0006;
-    } else if (fullOwnershipRegionalStandard <= 39000000) {
-      regionalTaxDesc = "2,600만원 초과 ~ 3,900만원 이하: 13,700원 + (2,600만원 초과금액 × 8/10,000)";
-      regionalBaseTax = 13700 + (fullOwnershipRegionalStandard - 26000000) * 0.0008;
-    } else if (fullOwnershipRegionalStandard <= 64000000) {
-      regionalTaxDesc = "3,900만원 초과 ~ 6,400만원 이하: 24,100원 + (3,900만원 초과금액 × 10/10,000)";
-      regionalBaseTax = 24100 + (fullOwnershipRegionalStandard - 39000000) * 0.001;
-    } else {
-      regionalTaxDesc = "6,400만원 초과: 49,100원 + (6,400만원 초과금액 × 12/10,000)";
-      regionalBaseTax = 49100 + (fullOwnershipRegionalStandard - 64000000) * 0.0012;
-    }
-    
-    explanation += `- 세율 적용 (100% 기준): ${regionalTaxDesc}\n`;
-    explanation += `- 세율 적용 후 세액 (100% 기준): ${formatCurrency(regionalBaseTax)}원\n`;
-    
-    // 소유비율 적용
-    const regionalTaxAfterOwnership = regionalBaseTax * (propertyData.ownershipRatio / 100);
-    explanation += `- 소유비율 적용: ${formatCurrency(regionalBaseTax)} × ${propertyData.ownershipRatio}% = ${formatCurrency(regionalTaxAfterOwnership)}원\n`;
-    
-    let regionalTaxAfterProcessing = regionalTaxAfterOwnership;
-    
-    // 1세대 1주택 특례 적용
-    if (propertyData.isSingleHousehold) {
-      const regionalTaxAfterSingleHouseholdDiscount = regionalTaxAfterProcessing * 0.5;
-      explanation += `- 1세대 1주택 특례 적용: ${formatCurrency(regionalTaxAfterProcessing)} × 50% = ${formatCurrency(regionalTaxAfterSingleHouseholdDiscount)}원\n`;
-      regionalTaxAfterProcessing = regionalTaxAfterSingleHouseholdDiscount;
+      // 단일 주택의 경우 기존 로직 유지
+      const regionalResourceTaxStandard = propertyData.regionalResourceTaxStandard || result.taxableStandard;
+      explanation += `- 지역자원시설세 과세표준 (소유비율 ${propertyData.ownershipRatio}%): ${formatCurrency(regionalResourceTaxStandard)}원\n`;
+      
+      if (propertyData.regionalResourceTaxStandard) {
+        explanation += `  (입력된 지역자원시설세 과세표준 적용)\n`;
+      } else {
+        explanation += `  (재산세 과세표준과 동일 적용)\n`;
+      }
+      
+      // 소유비율 100% 기준 과세표준으로 역산
+      const fullOwnershipRegionalStandard = regionalResourceTaxStandard / (propertyData.ownershipRatio / 100);
+      explanation += `- 소유비율 100% 기준 과세표준: ${formatCurrency(regionalResourceTaxStandard)} ÷ ${propertyData.ownershipRatio}% = ${formatCurrency(fullOwnershipRegionalStandard)}원\n`;
+      
+      // 구간별 세율 적용 설명 (100% 기준으로)
+      let regionalTaxDesc = "";
+      let regionalBaseTax = 0;
+      
+      if (fullOwnershipRegionalStandard <= 6000000) {
+        regionalTaxDesc = "600만원 이하: 과세표준 × 4/10,000";
+        regionalBaseTax = fullOwnershipRegionalStandard * 0.0004;
+      } else if (fullOwnershipRegionalStandard <= 13000000) {
+        regionalTaxDesc = "600만원 초과 ~ 1,300만원 이하: 2,400원 + (600만원 초과금액 × 5/10,000)";
+        regionalBaseTax = 2400 + (fullOwnershipRegionalStandard - 6000000) * 0.0005;
+      } else if (fullOwnershipRegionalStandard <= 26000000) {
+        regionalTaxDesc = "1,300만원 초과 ~ 2,600만원 이하: 5,900원 + (1,300만원 초과금액 × 6/10,000)";
+        regionalBaseTax = 5900 + (fullOwnershipRegionalStandard - 13000000) * 0.0006;
+      } else if (fullOwnershipRegionalStandard <= 39000000) {
+        regionalTaxDesc = "2,600만원 초과 ~ 3,900만원 이하: 13,700원 + (2,600만원 초과금액 × 8/10,000)";
+        regionalBaseTax = 13700 + (fullOwnershipRegionalStandard - 26000000) * 0.0008;
+      } else if (fullOwnershipRegionalStandard <= 64000000) {
+        regionalTaxDesc = "3,900만원 초과 ~ 6,400만원 이하: 24,100원 + (3,900만원 초과금액 × 10/10,000)";
+        regionalBaseTax = 24100 + (fullOwnershipRegionalStandard - 39000000) * 0.001;
+      } else {
+        regionalTaxDesc = "6,400만원 초과: 49,100원 + (6,400만원 초과금액 × 12/10,000)";
+        regionalBaseTax = 49100 + (fullOwnershipRegionalStandard - 64000000) * 0.0012;
+      }
+      
+      explanation += `- 세율 적용 (100% 기준): ${regionalTaxDesc}\n`;
+      explanation += `- 세율 적용 후 세액 (100% 기준): ${formatCurrency(regionalBaseTax)}원\n`;
+      
+      // 소유비율 적용
+      const regionalTaxAfterOwnership = regionalBaseTax * (propertyData.ownershipRatio / 100);
+      explanation += `- 소유비율 적용: ${formatCurrency(regionalBaseTax)} × ${propertyData.ownershipRatio}% = ${formatCurrency(regionalTaxAfterOwnership)}원\n`;
+      
+      // 지역자원시설세는 1세대 1주택 특례 적용 없음
+      regionalTaxAfterProcessing = regionalTaxAfterOwnership;
     }
     
 
     
     // 10원 미만 절사
-    explanation += `- 10원 미만 절사 후 최종 지역자원시설세: ${formatCurrency(result.regionalResourceTax)}원\n`;
+    const finalRegionalTax = Math.floor(regionalTaxAfterProcessing / 10) * 10;
+    explanation += `- 10원 미만 절사 후 최종 지역자원시설세: ${formatCurrency(finalRegionalTax)}원\n`;
     
-    if (result.regionalResourceTax < 1000) {
+    if (finalRegionalTax < 1000) {
       explanation += `- 소액 징수면제: 1,000원 미만으로 징수면제 적용\n`;
     }
     

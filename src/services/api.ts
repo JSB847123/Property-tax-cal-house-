@@ -2,7 +2,7 @@ import axios from 'axios';
 import { PropertyData, CalculationResult, SavedCalculation } from '@/types/propertyTax';
 
 // API 기본 설정
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL = 'http://localhost:3004/api';
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
