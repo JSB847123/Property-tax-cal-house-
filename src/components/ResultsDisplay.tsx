@@ -20,12 +20,13 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
   };
 
   const getQuarterlyPayment = (): number => {
-    // 각 세목별로 1/2씩 계산해서 합산 (지역자원시설세는 1세대 1주택 특례 없음)
+    // 각 세목별로 1/2씩 계산해서 합산 (지역자원시설세 포함)
     const propertyTaxHalf = Math.floor((result.propertyTax * 0.5) / 10) * 10;
     const urbanAreaTaxHalf = Math.floor((result.urbanAreaTax * 0.5) / 10) * 10;
     const localEducationTaxHalf = Math.floor((result.localEducationTax * 0.5) / 10) * 10;
+    const regionalResourceTaxHalf = Math.floor((result.regionalResourceTax * 0.5) / 10) * 10;
     
-    return propertyTaxHalf + urbanAreaTaxHalf + localEducationTaxHalf;
+    return propertyTaxHalf + urbanAreaTaxHalf + localEducationTaxHalf + regionalResourceTaxHalf;
   };
 
   // 민원인 설명란을 위한 상세 계산 과정 생성
@@ -241,7 +242,7 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
       
       propertyData.multiUnits.forEach((unit, index) => {
         const unitNumber = index + 1;
-        const unitStandard = unit.regionalResourceTaxStandard || unit.taxableStandard;
+        const unitStandard = unit.regionalResourceTaxStandard || 0;
         
         // 각 구별 지역자원시설세 과세표준에 맞는 세율 적용 (새로운 6단계 구간)
         let unitRegionalTax = 0;
@@ -281,13 +282,13 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
       
     } else {
       // 단일 주택의 경우 기존 로직 유지
-      const regionalResourceTaxStandard = propertyData.regionalResourceTaxStandard || result.taxableStandard;
+      const regionalResourceTaxStandard = propertyData.regionalResourceTaxStandard || 0;
       explanation += `- 지역자원시설세 과세표준 (소유비율 ${propertyData.ownershipRatio}%): ${formatCurrency(regionalResourceTaxStandard)}원\n`;
       
       if (propertyData.regionalResourceTaxStandard) {
         explanation += `  (입력된 지역자원시설세 과세표준 적용)\n`;
       } else {
-        explanation += `  (재산세 과세표준과 동일 적용)\n`;
+        explanation += `  (미입력으로 0원 적용)\n`;
       }
       
       // 소유비율 100% 기준 과세표준으로 역산
@@ -357,9 +358,22 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
     
     // 8. 납부 방법
     explanation += "8. 납부 방법\n";
-    explanation += `- 1기분 (7월): ${formatCurrency(getQuarterlyPayment())}원\n`;
-    explanation += `- 2기분 (9월): ${formatCurrency(getQuarterlyPayment())}원\n`;
-    explanation += "- 각 기별로 각 세목(재산세 본세, 도시지역분, 지방교육세, 지역자원시설세)의 50%씩 분할 납부\n\n";
+    const quarterlyPayment = getQuarterlyPayment();
+    explanation += `- 1기분 (7월): ${formatCurrency(quarterlyPayment)}원\n`;
+    explanation += `- 2기분 (9월): ${formatCurrency(quarterlyPayment)}원\n`;
+    explanation += "- 각 기별로 각 세목(재산세 본세, 도시지역분, 지방교육세, 지역자원시설세)의 50%씩 분할 납부\n";
+    
+    // 분기별 세목 상세 내역 추가
+    const propertyTaxHalf = Math.floor((result.propertyTax * 0.5) / 10) * 10;
+    const urbanAreaTaxHalf = Math.floor((result.urbanAreaTax * 0.5) / 10) * 10;
+    const localEducationTaxHalf = Math.floor((result.localEducationTax * 0.5) / 10) * 10;
+    const regionalResourceTaxHalf = Math.floor((result.regionalResourceTax * 0.5) / 10) * 10;
+    
+    explanation += "\n분기별 세목 내역:\n";
+    explanation += `- 재산세 본세: ${formatCurrency(propertyTaxHalf)}원\n`;
+    explanation += `- 도시지역분: ${formatCurrency(urbanAreaTaxHalf)}원\n`;
+    explanation += `- 지방교육세: ${formatCurrency(localEducationTaxHalf)}원\n`;
+    explanation += `- 지역자원시설세: ${formatCurrency(regionalResourceTaxHalf)}원\n\n`;
     
     // 9. 계산기준
     explanation += "9. 계산기준\n";
@@ -847,7 +861,7 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                         <span className="text-sm text-gray-600 block mb-1">지역자원시설세 과세표준 확정 (소유비율 {propertyData.ownershipRatio}%)</span>
                         <p className="text-gray-700">
                           {formatCurrency(regionalResourceTaxStandard)}원{" "}
-                          {propertyData.regionalResourceTaxStandard ? "(입력된 지역자원시설세 과세표준 적용)" : "(재산세 과세표준과 동일 적용)"}
+                          {propertyData.regionalResourceTaxStandard ? "(입력된 지역자원시설세 과세표준 적용)" : "(미입력으로 0원 적용)"}
                         </p>
                       </div>
                       

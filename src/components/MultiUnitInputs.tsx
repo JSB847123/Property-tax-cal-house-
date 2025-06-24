@@ -63,8 +63,8 @@ const MultiUnitInputs = ({ units, onAdd, onRemove, onUpdate, title }: MultiUnitI
               <Label className="text-xs text-gray-600">지역자원시설세 과세표준 (원)</Label>
               <Input
                 type="text"
-                placeholder="미입력시 과세표준과 동일"
-                value={unit.regionalResourceTaxStandard ? formatNumberWithCommas(unit.regionalResourceTaxStandard) : ""}
+                placeholder="미입력시 0원 적용"
+                value={unit.regionalResourceTaxStandard !== undefined && unit.regionalResourceTaxStandard !== null ? formatNumberWithCommas(unit.regionalResourceTaxStandard) : ""}
                 onChange={(e) => onUpdate(unit.id, 'regionalResourceTaxStandard', parseNumberFromInput(e.target.value))}
                 className="flex-1"
               />

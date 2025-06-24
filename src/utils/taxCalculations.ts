@@ -233,7 +233,7 @@ export const calculateMultiUnitRegionalResourceTax = (multiUnits: MultiUnitData[
   let totalTaxBeforeRounding = 0;
   
   multiUnits.forEach((unit) => {
-    const regionalStandard = unit.regionalResourceTaxStandard || unit.taxableStandard;
+    const regionalStandard = unit.regionalResourceTaxStandard || 0;
     let taxAmount: number;
     let taxRate: number;
     let taxBracket: string;

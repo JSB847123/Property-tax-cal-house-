@@ -6,5 +6,10 @@ export const formatNumberWithCommas = (value: number): string => {
 
 // 숫자 입력 처리 함수
 export const parseNumberFromInput = (value: string): number => {
-  return Number(value.replace(/,/g, ''));
+  const cleanValue = value.replace(/,/g, '').trim();
+  if (cleanValue === '' || cleanValue === '0') {
+    return 0;
+  }
+  const parsed = Number(cleanValue);
+  return isNaN(parsed) ? 0 : parsed;
 };
