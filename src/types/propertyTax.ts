@@ -37,6 +37,12 @@ export interface PropertyData {
   taxBurdenCapRate: number;
   taxStandardCapRate: number;
   previousYear: PreviousYearData;
+  // 건물/토지 소유비율 구분 기능
+  separateBuildingLandOwnership?: boolean;
+  buildingOwnershipRatio?: number;
+  landOwnershipRatio?: number;
+  // 토지감면율
+  landReductionRate?: number;
 }
 
 export interface CalculationResult {

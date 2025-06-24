@@ -16,6 +16,15 @@ import { formatNumberWithCommas } from "./formatUtils";
 export const performTaxCalculation = (propertyData: PropertyData): CalculationResult => {
   console.log("계산 시작:", propertyData);
   
+  // undefined 값들을 기본값으로 설정 (입력칸에서 백스페이스로 지운 경우 처리)
+  const safePropertyData = {
+    ...propertyData,
+    ownershipRatio: propertyData.ownershipRatio ?? 100,
+    buildingOwnershipRatio: propertyData.buildingOwnershipRatio ?? propertyData.ownershipRatio ?? 100,
+    landOwnershipRatio: propertyData.landOwnershipRatio ?? propertyData.ownershipRatio ?? 100
+  };
+  
+  // 이후 계산에서는 safePropertyData 사용
   let taxableStandard = 0;
   let taxableStandardBeforeCap = 0;
   let taxableStandardCap = 0;
@@ -26,54 +35,54 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
   let calculationDetails = "";
   let basePropertyTaxWithOwnership = 0;
 
-  if (propertyData.propertyType === "다가구주택") {
+  if (safePropertyData.propertyType === "다가구주택") {
     // 다가구주택의 경우 - 구별로 정확한 계산
-    taxableStandard = propertyData.multiUnits.reduce((sum, unit) => sum + unit.taxableStandard, 0);
+    taxableStandard = safePropertyData.multiUnits.reduce((sum, unit) => sum + unit.taxableStandard, 0);
     taxableStandardBeforeCap = taxableStandard;
     taxableStandardCap = taxableStandard;
     
     // 다가구주택에서도 1세대 1주택 특례세율 적용 가능
-    const isSpecialRateApplicable = propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000;
+    const isSpecialRateApplicable = safePropertyData.isSingleHousehold && safePropertyData.publicPrice <= 900000000;
     console.log('다가구주택: 1세대 1주택 특례세율 적용 여부:', isSpecialRateApplicable);
     let specialRateTax = 0;
     let standardRateTax = 0;
     
     // 각 구별로 정확한 계산 (개선된 방식)
-    const multiUnitTaxResult = calculateMultiUnitPropertyTax(propertyData.multiUnits, propertyData.isSingleHousehold, isSpecialRateApplicable);
+    const multiUnitTaxResult = calculateMultiUnitPropertyTax(safePropertyData.multiUnits, safePropertyData.isSingleHousehold, isSpecialRateApplicable);
     let basePropertyTax = multiUnitTaxResult.totalTax;
     
     // 특례세율과 표준세율 모두 계산 (비교용)
     if (isSpecialRateApplicable) {
       specialRateTax = basePropertyTax;
-      standardRateTax = calculateMultiUnitPropertyTax(propertyData.multiUnits, propertyData.isSingleHousehold, false).totalTax;
+      standardRateTax = calculateMultiUnitPropertyTax(safePropertyData.multiUnits, safePropertyData.isSingleHousehold, false).totalTax;
     } else {
       standardRateTax = basePropertyTax;
     }
     
     // 소유비율 적용 (세부담상한제 적용 전)
-    basePropertyTaxWithOwnership = basePropertyTax * (propertyData.ownershipRatio / 100);
+    basePropertyTaxWithOwnership = basePropertyTax * (safePropertyData.ownershipRatio / 100);
     basePropertyTaxWithOwnership = Math.floor(basePropertyTaxWithOwnership / 10) * 10;
     
     // 전세사기 감면, 임대주택 감면 적용 (소유비율 적용 후) - 노후연금은 세부담상한제 적용 후 처리
-    if ((propertyData.reductionType === "전세사기 감면" || propertyData.reductionType === "임대주택") && propertyData.currentYearReductionRate > 0) {
-      basePropertyTaxWithOwnership = Math.floor((basePropertyTaxWithOwnership * (1 - propertyData.currentYearReductionRate / 100)) / 10) * 10;
+    if ((safePropertyData.reductionType === "전세사기 감면" || safePropertyData.reductionType === "임대주택") && safePropertyData.currentYearReductionRate > 0) {
+      basePropertyTaxWithOwnership = Math.floor((basePropertyTaxWithOwnership * (1 - safePropertyData.currentYearReductionRate / 100)) / 10) * 10;
     }
     
     console.log('소유비율 적용 후 기본 세액:', basePropertyTaxWithOwnership);
     
     // 세부담상한제 적용
-    if (propertyData.previousYear.actualPaidTax > 0) {
+    if (safePropertyData.previousYear.actualPaidTax > 0) {
       // 세부담상한액 = 전년도 실제 납부세액 × 상한율
-      let taxBurdenCapAmount = Math.floor((propertyData.previousYear.actualPaidTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10;
+      let taxBurdenCapAmount = Math.floor((safePropertyData.previousYear.actualPaidTax * (safePropertyData.taxBurdenCapRate / 100)) / 10) * 10;
       
       // 임대주택 감면의 경우 세부담상한액에도 감면율 적용
-      if (propertyData.reductionType === "임대주택" && propertyData.currentYearReductionRate > 0) {
-        taxBurdenCapAmount = Math.floor((taxBurdenCapAmount * (1 - propertyData.currentYearReductionRate / 100)) / 10) * 10;
+      if (safePropertyData.reductionType === "임대주택" && safePropertyData.currentYearReductionRate > 0) {
+        taxBurdenCapAmount = Math.floor((taxBurdenCapAmount * (1 - safePropertyData.currentYearReductionRate / 100)) / 10) * 10;
       }
       
       if (isSpecialRateApplicable) {
         // 1세대 1주택 특례세율 적용 시: 특례세율과 세부담상한액 중 더 적은 금액 선택 (노후연금 감면 적용 안함)
-        const specialRateWithOwnership = Math.floor((specialRateTax * (propertyData.ownershipRatio / 100)) / 10) * 10;
+        const specialRateWithOwnership = Math.floor((specialRateTax * (safePropertyData.ownershipRatio / 100)) / 10) * 10;
         propertyTax = Math.min(specialRateWithOwnership, taxBurdenCapAmount);
       } else {
         // 표준세율 적용 시: 소유비율이 적용된 기본 세액과 세부담상한액 중 더 적은 금액 선택
@@ -81,8 +90,8 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
         propertyTax = selectedTax;
         
         // 노후연금 감면 적용 (세부담상한제 적용 후, 표준세율인 경우만)
-        if (propertyData.reductionType === "노후연금" && propertyData.currentYearReductionRate > 0) {
-          propertyTax = Math.floor((propertyTax * (1 - propertyData.currentYearReductionRate / 100)) / 10) * 10;
+        if (safePropertyData.reductionType === "노후연금" && safePropertyData.currentYearReductionRate > 0) {
+          propertyTax = Math.floor((propertyTax * (1 - safePropertyData.currentYearReductionRate / 100)) / 10) * 10;
         }
       }
       
@@ -92,25 +101,25 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
         propertyTax,
         isSpecialRateApplicable,
         Math_min_result: Math.min(basePropertyTaxWithOwnership, taxBurdenCapAmount),
-        actualPaidTax: propertyData.previousYear.actualPaidTax,
-        taxBurdenCapRate: propertyData.taxBurdenCapRate,
+        actualPaidTax: safePropertyData.previousYear.actualPaidTax,
+        taxBurdenCapRate: safePropertyData.taxBurdenCapRate,
         isBaseSmaller: basePropertyTaxWithOwnership < taxBurdenCapAmount
       });
       
       calculationDetails += `\n\n세부담상한제 적용`;
-      const originalTaxBurdenCapAmount = Math.floor((propertyData.previousYear.actualPaidTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10;
-      calculationDetails += `\n전년도 납부세액 ${formatNumberWithCommas(propertyData.previousYear.actualPaidTax)}원 × ${propertyData.taxBurdenCapRate}% = ${formatNumberWithCommas(originalTaxBurdenCapAmount)}원`;
+      const originalTaxBurdenCapAmount = Math.floor((safePropertyData.previousYear.actualPaidTax * (safePropertyData.taxBurdenCapRate / 100)) / 10) * 10;
+      calculationDetails += `\n전년도 납부세액 ${formatNumberWithCommas(safePropertyData.previousYear.actualPaidTax)}원 × ${safePropertyData.taxBurdenCapRate}% = ${formatNumberWithCommas(originalTaxBurdenCapAmount)}원`;
       
       // 임대주택 감면이 세부담상한액에 적용된 경우 표시
-      if (propertyData.reductionType === "임대주택" && propertyData.currentYearReductionRate > 0) {
-        calculationDetails += `\n임대주택 감면 적용: ${formatNumberWithCommas(originalTaxBurdenCapAmount)}원 × (1 - ${propertyData.currentYearReductionRate}%) = ${formatNumberWithCommas(taxBurdenCapAmount)}원`;
+      if (safePropertyData.reductionType === "임대주택" && safePropertyData.currentYearReductionRate > 0) {
+        calculationDetails += `\n임대주택 감면 적용: ${formatNumberWithCommas(originalTaxBurdenCapAmount)}원 × (1 - ${safePropertyData.currentYearReductionRate}%) = ${formatNumberWithCommas(taxBurdenCapAmount)}원`;
       }
       
       calculationDetails += `\n\n세액 비교 및 선택`;
       
       if (isSpecialRateApplicable) {
         // 1세대 1주택 특례세율 적용 시
-        const specialRateWithOwnership = Math.floor((specialRateTax * (propertyData.ownershipRatio / 100)) / 10) * 10;
+        const specialRateWithOwnership = Math.floor((specialRateTax * (safePropertyData.ownershipRatio / 100)) / 10) * 10;
         
         calculationDetails += `\n과세표준에서 특례세율을 적용한 재산세(소유비율 적용): ${formatNumberWithCommas(specialRateWithOwnership)}원`;
         calculationDetails += `\n세부담상한액: ${formatNumberWithCommas(taxBurdenCapAmount)}원`;
@@ -124,38 +133,38 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
         calculationDetails += `\n최종 선택: ${formatNumberWithCommas(selectedTax)}원 (더 적은 금액 적용)`;
         
         // 노후연금 감면이 있는 경우 세부담상한제 적용 후 감면 적용 표시
-        if (propertyData.reductionType === "노후연금" && propertyData.currentYearReductionRate > 0) {
+        if (safePropertyData.reductionType === "노후연금" && safePropertyData.currentYearReductionRate > 0) {
           calculationDetails += `\n\n노후연금 감면 적용 (세부담상한제 적용 후)`;
-          calculationDetails += `\n${formatNumberWithCommas(selectedTax)}원 × (1 - ${propertyData.currentYearReductionRate}%) = ${formatNumberWithCommas(propertyTax)}원`;
+          calculationDetails += `\n${formatNumberWithCommas(selectedTax)}원 × (1 - ${safePropertyData.currentYearReductionRate}%) = ${formatNumberWithCommas(propertyTax)}원`;
         }
       }
       
       calculationDetails += `\n\n최종 재산세`;
       calculationDetails += `\n${formatNumberWithCommas(propertyTax)}원`;
 
-      if (propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000) {
+      if (safePropertyData.isSingleHousehold && safePropertyData.publicPrice <= 900000000) {
         calculationDetails += "\n\n※ 1세대 1주택자 특례세율 적용";
       }
 
-      standardPropertyTax = propertyData.multiUnits.reduce((total, unit) => {
+      standardPropertyTax = safePropertyData.multiUnits.reduce((total, unit) => {
         return total + calculateStandardPropertyTax(unit.taxableStandard);
       }, 0);
       
       // 지역자원시설세 계산 (소유비율 적용 전)
-      regionalResourceTax = calculateMultiUnitRegionalResourceTax(propertyData.multiUnits).totalTax;
+      regionalResourceTax = calculateMultiUnitRegionalResourceTax(safePropertyData.multiUnits).totalTax;
       
       // 분기별 세액 설명 추가 (다가구주택)
-      const multiUnitTotalTaxableStandard = propertyData.multiUnits.reduce((sum, unit) => sum + unit.taxableStandard, 0);
-      let multiUnitUrbanAreaTax = Math.floor((multiUnitTotalTaxableStandard * 0.0014 * (propertyData.ownershipRatio / 100)) / 10) * 10;
+      const multiUnitTotalTaxableStandard = safePropertyData.multiUnits.reduce((sum, unit) => sum + unit.taxableStandard, 0);
+      let multiUnitUrbanAreaTax = Math.floor((multiUnitTotalTaxableStandard * 0.0014 * (safePropertyData.ownershipRatio / 100)) / 10) * 10;
       
       // 임대주택 감면율 적용 (다가구주택 - 60㎡ 초과인 경우 도시지역분 감면 제외)
-      if (propertyData.reductionType === "임대주택" && propertyData.currentYearReductionRate > 0) {
+      if (safePropertyData.reductionType === "임대주택" && safePropertyData.currentYearReductionRate > 0) {
         // 60㎡ 초과인 경우 도시지역분은 감면하지 않음
-        if (propertyData.rentalHousingArea && propertyData.rentalHousingArea > 60) {
+        if (safePropertyData.rentalHousingArea && safePropertyData.rentalHousingArea > 60) {
           // 60㎡ 초과 시 도시지역분 감면 적용하지 않음
         } else {
           // 60㎡ 이하인 경우만 도시지역분 감면 적용
-          multiUnitUrbanAreaTax = Math.floor((multiUnitUrbanAreaTax * (1 - propertyData.currentYearReductionRate / 100)) / 10) * 10;
+          multiUnitUrbanAreaTax = Math.floor((multiUnitUrbanAreaTax * (1 - safePropertyData.currentYearReductionRate / 100)) / 10) * 10;
         }
       }
       const multiUnitLocalEducationTax = Math.floor((propertyTax * 0.2) / 10) * 10;
@@ -180,36 +189,36 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
       
       // 다가구주택의 도시지역분 세부담상한제 적용
       urbanAreaTax = multiUnitUrbanAreaTax;
-      if (propertyData.previousYear.urbanAreaTax > 0) {
+      if (safePropertyData.previousYear.urbanAreaTax > 0) {
         // 전년도 도시지역분 결정세액 × 세부담상한율
-        const urbanAreaTaxCap = Math.floor((propertyData.previousYear.urbanAreaTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10;
+        const urbanAreaTaxCap = Math.floor((safePropertyData.previousYear.urbanAreaTax * (safePropertyData.taxBurdenCapRate / 100)) / 10) * 10;
         urbanAreaTax = Math.min(multiUnitUrbanAreaTax, urbanAreaTaxCap);
       }
     } else {
       propertyTax = basePropertyTaxWithOwnership;
       
       // 노후연금 감면 적용 (세부담상한제 미적용 시)
-      if (propertyData.reductionType === "노후연금" && propertyData.currentYearReductionRate > 0) {
-        propertyTax = Math.floor((propertyTax * (1 - propertyData.currentYearReductionRate / 100)) / 10) * 10;
+      if (safePropertyData.reductionType === "노후연금" && safePropertyData.currentYearReductionRate > 0) {
+        propertyTax = Math.floor((propertyTax * (1 - safePropertyData.currentYearReductionRate / 100)) / 10) * 10;
       }
       
       calculationDetails += `\n\n최종 재산세`;
       calculationDetails += `\n${formatNumberWithCommas(propertyTax)}원`;
       
       // 전세사기 감면 표시 (세부담상한제 미적용 시)
-      if (propertyData.reductionType === "전세사기 감면" && propertyData.currentYearReductionRate > 0) {
-        calculationDetails += `\n\n※ ${propertyData.reductionType} ${propertyData.currentYearReductionRate}%가 이미 소유비율 적용 후에 반영됨`;
+      if (safePropertyData.reductionType === "전세사기 감면" && safePropertyData.currentYearReductionRate > 0) {
+        calculationDetails += `\n\n※ ${safePropertyData.reductionType} ${safePropertyData.currentYearReductionRate}%가 이미 소유비율 적용 후에 반영됨`;
       }
       
       // 노후연금 감면 표시 (세부담상한제 미적용 시)
-      if (propertyData.reductionType === "노후연금" && propertyData.currentYearReductionRate > 0) {
-        calculationDetails += `\n\n※ ${propertyData.reductionType} ${propertyData.currentYearReductionRate}% 감면이 최종 재산세에 적용됨`;
+      if (safePropertyData.reductionType === "노후연금" && safePropertyData.currentYearReductionRate > 0) {
+        calculationDetails += `\n\n※ ${safePropertyData.reductionType} ${safePropertyData.currentYearReductionRate}% 감면이 최종 재산세에 적용됨`;
       }
     }
     
     // 계산 과정 설명 생성 (다가구주택용)
-    calculationDetails = `1. 과세표준 계산 (다가구주택 ${propertyData.multiUnits.length}개 구별)\n`;
-    propertyData.multiUnits.forEach((unit, index) => {
+    calculationDetails = `1. 과세표준 계산 (다가구주택 ${safePropertyData.multiUnits.length}개 구별)\n`;
+    safePropertyData.multiUnits.forEach((unit, index) => {
       calculationDetails += `${index + 1}구: 과세표준 ${formatNumberWithCommas(unit.taxableStandard)}원\n`;
     });
     
@@ -252,15 +261,15 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     calculationDetails += `\n10원 단위 내림 적용: ${formatNumberWithCommas(basePropertyTax)}원`;
     
     calculationDetails += `\n\n3. 소유비율 적용`;
-    calculationDetails += `\n기본 재산세 ${formatNumberWithCommas(basePropertyTax)}원 × ${propertyData.ownershipRatio}% = ${formatNumberWithCommas(Math.floor((basePropertyTax * (propertyData.ownershipRatio / 100)) / 10) * 10)}원`;
+    calculationDetails += `\n기본 재산세 ${formatNumberWithCommas(basePropertyTax)}원 × ${safePropertyData.ownershipRatio}% = ${formatNumberWithCommas(Math.floor((basePropertyTax * (safePropertyData.ownershipRatio / 100)) / 10) * 10)}원`;
     
     let stepNumber = 4;
     
     // 감면 표시
-    if ((propertyData.reductionType === "전세사기 감면" || propertyData.reductionType === "임대주택") && propertyData.currentYearReductionRate > 0) {
-      const beforeReduction = Math.floor((basePropertyTax * (propertyData.ownershipRatio / 100)) / 10) * 10;
-      calculationDetails += `\n\n${stepNumber}. ${propertyData.reductionType} 적용`;
-      calculationDetails += `\n${formatNumberWithCommas(beforeReduction)}원 × (1 - ${propertyData.currentYearReductionRate}%) = ${formatNumberWithCommas(basePropertyTaxWithOwnership)}원`;
+    if ((safePropertyData.reductionType === "전세사기 감면" || safePropertyData.reductionType === "임대주택") && safePropertyData.currentYearReductionRate > 0) {
+      const beforeReduction = Math.floor((basePropertyTax * (safePropertyData.ownershipRatio / 100)) / 10) * 10;
+      calculationDetails += `\n\n${stepNumber}. ${safePropertyData.reductionType} 적용`;
+      calculationDetails += `\n${formatNumberWithCommas(beforeReduction)}원 × (1 - ${safePropertyData.currentYearReductionRate}%) = ${formatNumberWithCommas(basePropertyTaxWithOwnership)}원`;
       stepNumber++;
     }
     
@@ -268,7 +277,7 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     calculationDetails += `\n\n${stepNumber}. 지역자원시설세 계산`;
     calculationDetails += `\n각 구별 과세표준에 해당하는 세율을 적용하여 계산`;
     
-    const multiUnitRegionalResult = calculateMultiUnitRegionalResourceTax(propertyData.multiUnits);
+    const multiUnitRegionalResult = calculateMultiUnitRegionalResourceTax(safePropertyData.multiUnits);
     multiUnitRegionalResult.unitCalculations.forEach((calc, index) => {
       calculationDetails += `\n\n${index + 1}구 계산:`;
       calculationDetails += `\n• 과세표준: ${formatNumberWithCommas(calc.taxableStandard)}원`;
@@ -303,11 +312,11 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     calculationDetails += `\n과세표준 64,000,000원 초과, 세율(표준): 49,100원 + (64,000,000원초과금액 × 12/10,000), 간이세율: 과세표준액 × 0.12% - 27,700`;
 
     // 1세대 1주택 특례세율 적용 표시 (한 번만)
-    if (propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000) {
+    if (safePropertyData.isSingleHousehold && safePropertyData.publicPrice <= 900000000) {
       calculationDetails += "\n\n※ 1세대 1주택자 특례세율 적용";
     }
 
-    standardPropertyTax = propertyData.multiUnits.reduce((total, unit) => {
+    standardPropertyTax = safePropertyData.multiUnits.reduce((total, unit) => {
       return total + calculateStandardPropertyTax(unit.taxableStandard);
     }, 0);
     
@@ -317,15 +326,15 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     console.log('지역자원시설세 계산 (다가구주택):', {
       unitCalculations: multiUnitRegionalResult.unitCalculations,
       totalTax: regionalResourceTax,
-      ownershipRatio: propertyData.ownershipRatio
+      ownershipRatio: safePropertyData.ownershipRatio
     });
   } else {
     // 일반 주택의 경우 과표상한제 적용
     const taxableStandardData = calculateTaxableStandardWithCap(
-      propertyData.publicPrice, 
-      propertyData.isSingleHousehold,
-      propertyData.previousYear.taxableStandard,
-      propertyData.taxStandardCapRate
+      safePropertyData.publicPrice, 
+      safePropertyData.isSingleHousehold,
+      safePropertyData.previousYear.taxableStandard,
+      safePropertyData.taxStandardCapRate
     );
     
     taxableStandard = taxableStandardData.final;
@@ -333,7 +342,7 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     taxableStandardCap = taxableStandardData.cap;
     
     // 1세대 1주택 특례세율 적용 여부 확인
-    const isSpecialRateApplicable = propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000;
+    const isSpecialRateApplicable = safePropertyData.isSingleHousehold && safePropertyData.publicPrice <= 900000000;
     
     // 기본 세액 계산
     let basePropertyTax;
@@ -366,25 +375,25 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     console.log('세부담상한제 적용 전 기본 세액:', basePropertyTax);
     
     // 소유비율 적용 (세부담상한제 적용 전)
-    basePropertyTaxWithOwnership = basePropertyTax * (propertyData.ownershipRatio / 100);
+    basePropertyTaxWithOwnership = basePropertyTax * (safePropertyData.ownershipRatio / 100);
     basePropertyTaxWithOwnership = Math.floor(basePropertyTaxWithOwnership / 10) * 10;
     
     // 전세사기 감면, 임대주택 감면 적용 (소유비율 적용 후) - 노후연금은 세부담상한제 적용 후 처리
-    if ((propertyData.reductionType === "전세사기 감면" || propertyData.reductionType === "임대주택") && propertyData.currentYearReductionRate > 0) {
-      basePropertyTaxWithOwnership = Math.floor((basePropertyTaxWithOwnership * (1 - propertyData.currentYearReductionRate / 100)) / 10) * 10;
+    if ((safePropertyData.reductionType === "전세사기 감면" || safePropertyData.reductionType === "임대주택") && safePropertyData.currentYearReductionRate > 0) {
+      basePropertyTaxWithOwnership = Math.floor((basePropertyTaxWithOwnership * (1 - safePropertyData.currentYearReductionRate / 100)) / 10) * 10;
     }
     
     console.log('소유비율 적용 후 기본 세액:', basePropertyTaxWithOwnership);
     
     standardPropertyTax = calculateStandardPropertyTax(taxableStandard);
     
-    const marketValueRatio = calculateMarketValueRatio(propertyData.publicPrice, propertyData.isSingleHousehold);
+    const marketValueRatio = calculateMarketValueRatio(safePropertyData.publicPrice, safePropertyData.isSingleHousehold);
     calculationDetails = `1. 과세표준 계산\n`;
-    calculationDetails += `공시가격 ${formatNumberWithCommas(propertyData.publicPrice)}원 × 공정시장가액비율 ${(marketValueRatio * 100).toFixed(1)}% = 기준 과세표준 ${formatNumberWithCommas(taxableStandardBeforeCap)}원`;
+    calculationDetails += `공시가격 ${formatNumberWithCommas(safePropertyData.publicPrice)}원 × 공정시장가액비율 ${(marketValueRatio * 100).toFixed(1)}% = 기준 과세표준 ${formatNumberWithCommas(taxableStandardBeforeCap)}원`;
     
-    if (propertyData.previousYear.taxableStandard > 0 && taxableStandardCap > 0) {
+    if (safePropertyData.previousYear.taxableStandard > 0 && taxableStandardCap > 0) {
       calculationDetails += `\n\n2. 과표상한제 적용`;
-      calculationDetails += `\n• 직전연도 과세표준: ${formatNumberWithCommas(propertyData.previousYear.taxableStandard)}원`;
+      calculationDetails += `\n• 직전연도 과세표준: ${formatNumberWithCommas(safePropertyData.previousYear.taxableStandard)}원`;
       calculationDetails += `\n• 과표상한액: ${formatNumberWithCommas(taxableStandardCap)}원`;
       calculationDetails += `\n• 최종 과세표준: ${formatNumberWithCommas(taxableStandard)}원 (기준 과세표준과 과표상한액 중 작은 값)`;
     } else {
@@ -426,15 +435,15 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
       calculationDetails += `\n• 절약액: ${formatNumberWithCommas(standardRateTax - specialRateTax)}원`;
       
       calculationDetails += `\n\n소유비율 적용`;
-      const specialRateWithOwnership = Math.floor((specialRateTax * (propertyData.ownershipRatio / 100)) / 10) * 10;
-      calculationDetails += `\n${formatNumberWithCommas(specialRateTax)}원 × ${propertyData.ownershipRatio}% = ${formatNumberWithCommas(specialRateWithOwnership)}원`;
+      const specialRateWithOwnership = Math.floor((specialRateTax * (safePropertyData.ownershipRatio / 100)) / 10) * 10;
+      calculationDetails += `\n${formatNumberWithCommas(specialRateTax)}원 × ${safePropertyData.ownershipRatio}% = ${formatNumberWithCommas(specialRateWithOwnership)}원`;
       
       // 노후연금 감면이 있는 경우 표준세율 적용 후 감면 적용도 표시
-      if (propertyData.reductionType === "노후연금" && propertyData.currentYearReductionRate > 0) {
+      if (safePropertyData.reductionType === "노후연금" && safePropertyData.currentYearReductionRate > 0) {
         calculationDetails += `\n\n참고: 표준세율 + 노후연금 감면 적용 시`;
-        const standardRateWithOwnership = Math.floor((standardRateTax * (propertyData.ownershipRatio / 100)) / 10) * 10;
-        const standardRateWithReduction = Math.floor((standardRateWithOwnership * (1 - propertyData.currentYearReductionRate / 100)) / 10) * 10;
-        calculationDetails += `\n${formatNumberWithCommas(standardRateTax)}원 × ${propertyData.ownershipRatio}% × (1 - ${propertyData.currentYearReductionRate}%) = ${formatNumberWithCommas(standardRateWithReduction)}원`;
+        const standardRateWithOwnership = Math.floor((standardRateTax * (safePropertyData.ownershipRatio / 100)) / 10) * 10;
+        const standardRateWithReduction = Math.floor((standardRateWithOwnership * (1 - safePropertyData.currentYearReductionRate / 100)) / 10) * 10;
+        calculationDetails += `\n${formatNumberWithCommas(standardRateTax)}원 × ${safePropertyData.ownershipRatio}% × (1 - ${safePropertyData.currentYearReductionRate}%) = ${formatNumberWithCommas(standardRateWithReduction)}원`;
         calculationDetails += `\n특례세율이 더 유리함 (${formatNumberWithCommas(specialRateWithOwnership - standardRateWithReduction)}원 절약)`;
       }
     } else {
@@ -446,27 +455,27 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
       calculationDetails += `\n최종 과세표준 × 세율 × 소유비율`;
       
       // 간이세율로 직접 계산한 값 사용 (세부담상한제 적용 전 원래 값) - 세부담상한제 적용 전에 미리 계산
-      let displayPropertyTax = basePropertyTax * (propertyData.ownershipRatio / 100);
+      let displayPropertyTax = basePropertyTax * (safePropertyData.ownershipRatio / 100);
       
       // 전세사기 감면, 노후연금 감면, 임대주택 감면 적용 (표시용)
-      if ((propertyData.reductionType === "전세사기 감면" || propertyData.reductionType === "노후연금" || propertyData.reductionType === "임대주택") && propertyData.currentYearReductionRate > 0) {
-        displayPropertyTax = displayPropertyTax * (1 - propertyData.currentYearReductionRate / 100);
+      if ((safePropertyData.reductionType === "전세사기 감면" || safePropertyData.reductionType === "노후연금" || safePropertyData.reductionType === "임대주택") && safePropertyData.currentYearReductionRate > 0) {
+        displayPropertyTax = displayPropertyTax * (1 - safePropertyData.currentYearReductionRate / 100);
       }
       
       const displayPropertyTaxRounded = Math.floor(displayPropertyTax / 10) * 10;
       
-      calculationDetails += `\n${formatNumberWithCommas(taxableStandard)}원 × 세율 × ${propertyData.ownershipRatio}%`;
+      calculationDetails += `\n${formatNumberWithCommas(taxableStandard)}원 × 세율 × ${safePropertyData.ownershipRatio}%`;
       
       // 전세사기 감면, 노후연금 감면, 임대주택 감면 표시
-      if ((propertyData.reductionType === "전세사기 감면" || propertyData.reductionType === "노후연금" || propertyData.reductionType === "임대주택") && propertyData.currentYearReductionRate > 0) {
-        calculationDetails += ` × (1 - ${propertyData.currentYearReductionRate}%)`;
+      if ((safePropertyData.reductionType === "전세사기 감면" || safePropertyData.reductionType === "노후연금" || safePropertyData.reductionType === "임대주택") && safePropertyData.currentYearReductionRate > 0) {
+        calculationDetails += ` × (1 - ${safePropertyData.currentYearReductionRate}%)`;
       }
       
       calculationDetails += ` = ${formatNumberWithCommas(displayPropertyTaxRounded)}원`;
       
       // 전세사기 감면, 노후연금 감면, 임대주택 감면 표시
-      if ((propertyData.reductionType === "전세사기 감면" || propertyData.reductionType === "노후연금" || propertyData.reductionType === "임대주택") && propertyData.currentYearReductionRate > 0) {
-        calculationDetails += `\n※ ${propertyData.reductionType} ${propertyData.currentYearReductionRate}% 적용`;
+      if ((safePropertyData.reductionType === "전세사기 감면" || safePropertyData.reductionType === "노후연금" || safePropertyData.reductionType === "임대주택") && safePropertyData.currentYearReductionRate > 0) {
+        calculationDetails += `\n※ ${safePropertyData.reductionType} ${safePropertyData.currentYearReductionRate}% 적용`;
         calculationDetails += `\n※ 기본 세액(소유비율 적용 전): ${formatNumberWithCommas(basePropertyTax)}원`;
       }
     }
@@ -475,18 +484,18 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     const originalBasePropertyTaxWithOwnership = basePropertyTaxWithOwnership;
     
     // 세부담상한제 적용
-    if (propertyData.previousYear.actualPaidTax > 0) {
+    if (safePropertyData.previousYear.actualPaidTax > 0) {
       // 세부담상한액 = 전년도 실제 납부세액 × 상한율
-      let taxBurdenCapAmount = Math.floor((propertyData.previousYear.actualPaidTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10;
+      let taxBurdenCapAmount = Math.floor((safePropertyData.previousYear.actualPaidTax * (safePropertyData.taxBurdenCapRate / 100)) / 10) * 10;
       
       // 임대주택 감면의 경우 세부담상한액에도 감면율 적용
-      if (propertyData.reductionType === "임대주택" && propertyData.currentYearReductionRate > 0) {
-        taxBurdenCapAmount = Math.floor((taxBurdenCapAmount * (1 - propertyData.currentYearReductionRate / 100)) / 10) * 10;
+      if (safePropertyData.reductionType === "임대주택" && safePropertyData.currentYearReductionRate > 0) {
+        taxBurdenCapAmount = Math.floor((taxBurdenCapAmount * (1 - safePropertyData.currentYearReductionRate / 100)) / 10) * 10;
       }
       
       if (isSpecialRateApplicable) {
         // 1세대 1주택 특례세율 적용 시: 특례세율과 세부담상한액 중 더 적은 금액 선택 (노후연금 감면 적용 안함)
-        const specialRateWithOwnership = Math.floor((specialRateTax * (propertyData.ownershipRatio / 100)) / 10) * 10;
+        const specialRateWithOwnership = Math.floor((specialRateTax * (safePropertyData.ownershipRatio / 100)) / 10) * 10;
         propertyTax = Math.min(specialRateWithOwnership, taxBurdenCapAmount);
       } else {
         // 표준세율 적용 시: 소유비율이 적용된 기본 세액과 세부담상한액 중 더 적은 금액 선택
@@ -494,8 +503,8 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
         propertyTax = selectedTax;
         
         // 노후연금 감면 적용 (세부담상한제 적용 후, 표준세율인 경우만)
-        if (propertyData.reductionType === "노후연금" && propertyData.currentYearReductionRate > 0) {
-          propertyTax = Math.floor((propertyTax * (1 - propertyData.currentYearReductionRate / 100)) / 10) * 10;
+        if (safePropertyData.reductionType === "노후연금" && safePropertyData.currentYearReductionRate > 0) {
+          propertyTax = Math.floor((propertyTax * (1 - safePropertyData.currentYearReductionRate / 100)) / 10) * 10;
         }
       }
       
@@ -505,25 +514,25 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
         propertyTax,
         isSpecialRateApplicable,
         Math_min_result: Math.min(basePropertyTaxWithOwnership, taxBurdenCapAmount),
-        actualPaidTax: propertyData.previousYear.actualPaidTax,
-        taxBurdenCapRate: propertyData.taxBurdenCapRate,
+        actualPaidTax: safePropertyData.previousYear.actualPaidTax,
+        taxBurdenCapRate: safePropertyData.taxBurdenCapRate,
         isBaseSmaller: basePropertyTaxWithOwnership < taxBurdenCapAmount
       });
       
       calculationDetails += `\n\n세부담상한제 적용`;
-      const originalTaxBurdenCapAmount = Math.floor((propertyData.previousYear.actualPaidTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10;
-      calculationDetails += `\n전년도 납부세액 ${formatNumberWithCommas(propertyData.previousYear.actualPaidTax)}원 × ${propertyData.taxBurdenCapRate}% = ${formatNumberWithCommas(originalTaxBurdenCapAmount)}원`;
+      const originalTaxBurdenCapAmount = Math.floor((safePropertyData.previousYear.actualPaidTax * (safePropertyData.taxBurdenCapRate / 100)) / 10) * 10;
+      calculationDetails += `\n전년도 납부세액 ${formatNumberWithCommas(safePropertyData.previousYear.actualPaidTax)}원 × ${safePropertyData.taxBurdenCapRate}% = ${formatNumberWithCommas(originalTaxBurdenCapAmount)}원`;
       
       // 임대주택 감면이 세부담상한액에 적용된 경우 표시
-      if (propertyData.reductionType === "임대주택" && propertyData.currentYearReductionRate > 0) {
-        calculationDetails += `\n임대주택 감면 적용: ${formatNumberWithCommas(originalTaxBurdenCapAmount)}원 × (1 - ${propertyData.currentYearReductionRate}%) = ${formatNumberWithCommas(taxBurdenCapAmount)}원`;
+      if (safePropertyData.reductionType === "임대주택" && safePropertyData.currentYearReductionRate > 0) {
+        calculationDetails += `\n임대주택 감면 적용: ${formatNumberWithCommas(originalTaxBurdenCapAmount)}원 × (1 - ${safePropertyData.currentYearReductionRate}%) = ${formatNumberWithCommas(taxBurdenCapAmount)}원`;
       }
       
       calculationDetails += `\n\n세액 비교 및 선택`;
       
       if (isSpecialRateApplicable) {
         // 1세대 1주택 특례세율 적용 시
-        const specialRateWithOwnership = Math.floor((specialRateTax * (propertyData.ownershipRatio / 100)) / 10) * 10;
+        const specialRateWithOwnership = Math.floor((specialRateTax * (safePropertyData.ownershipRatio / 100)) / 10) * 10;
         
         calculationDetails += `\n과세표준에서 특례세율을 적용한 재산세(소유비율 적용): ${formatNumberWithCommas(specialRateWithOwnership)}원`;
         calculationDetails += `\n세부담상한액: ${formatNumberWithCommas(taxBurdenCapAmount)}원`;
@@ -537,37 +546,37 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
         calculationDetails += `\n최종 선택: ${formatNumberWithCommas(selectedTax)}원 (더 적은 금액 적용)`;
         
         // 노후연금 감면이 있는 경우 세부담상한제 적용 후 감면 적용 표시
-        if (propertyData.reductionType === "노후연금" && propertyData.currentYearReductionRate > 0) {
+        if (safePropertyData.reductionType === "노후연금" && safePropertyData.currentYearReductionRate > 0) {
           calculationDetails += `\n\n노후연금 감면 적용 (세부담상한제 적용 후)`;
-          calculationDetails += `\n${formatNumberWithCommas(selectedTax)}원 × (1 - ${propertyData.currentYearReductionRate}%) = ${formatNumberWithCommas(propertyTax)}원`;
+          calculationDetails += `\n${formatNumberWithCommas(selectedTax)}원 × (1 - ${safePropertyData.currentYearReductionRate}%) = ${formatNumberWithCommas(propertyTax)}원`;
         }
       }
       
       calculationDetails += `\n\n최종 재산세`;
       calculationDetails += `\n${formatNumberWithCommas(propertyTax)}원`;
 
-      if (propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000) {
+      if (safePropertyData.isSingleHousehold && safePropertyData.publicPrice <= 900000000) {
         calculationDetails += "\n\n※ 1세대 1주택자 특례세율 적용";
       }
     } else {
       propertyTax = basePropertyTaxWithOwnership;
       
       // 노후연금 감면 적용 (세부담상한제 미적용 시)
-      if (propertyData.reductionType === "노후연금" && propertyData.currentYearReductionRate > 0) {
-        propertyTax = Math.floor((propertyTax * (1 - propertyData.currentYearReductionRate / 100)) / 10) * 10;
+      if (safePropertyData.reductionType === "노후연금" && safePropertyData.currentYearReductionRate > 0) {
+        propertyTax = Math.floor((propertyTax * (1 - safePropertyData.currentYearReductionRate / 100)) / 10) * 10;
       }
       
       calculationDetails += `\n\n최종 재산세`;
       calculationDetails += `\n${formatNumberWithCommas(propertyTax)}원`;
       
       // 전세사기 감면 표시 (세부담상한제 미적용 시)
-      if (propertyData.reductionType === "전세사기 감면" && propertyData.currentYearReductionRate > 0) {
-        calculationDetails += `\n\n※ ${propertyData.reductionType} ${propertyData.currentYearReductionRate}%가 이미 소유비율 적용 후에 반영됨`;
+      if (safePropertyData.reductionType === "전세사기 감면" && safePropertyData.currentYearReductionRate > 0) {
+        calculationDetails += `\n\n※ ${safePropertyData.reductionType} ${safePropertyData.currentYearReductionRate}%가 이미 소유비율 적용 후에 반영됨`;
       }
       
       // 노후연금 감면 표시 (세부담상한제 미적용 시)
-      if (propertyData.reductionType === "노후연금" && propertyData.currentYearReductionRate > 0) {
-        calculationDetails += `\n\n※ ${propertyData.reductionType} ${propertyData.currentYearReductionRate}% 감면이 최종 재산세에 적용됨`;
+      if (safePropertyData.reductionType === "노후연금" && safePropertyData.currentYearReductionRate > 0) {
+        calculationDetails += `\n\n※ ${safePropertyData.reductionType} ${safePropertyData.currentYearReductionRate}% 감면이 최종 재산세에 적용됨`;
       }
     }
     
@@ -580,16 +589,20 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
   }
   
   // 지역자원시설세 계산 - 별도 과세표준이 있으면 사용, 없으면 0원 사용
-  const regionalResourceTaxStandard = propertyData.regionalResourceTaxStandard || 0;
-  // 소유비율 100% 기준 과세표준으로 역산
-  const fullOwnershipRegionalStandard = regionalResourceTaxStandard / (propertyData.ownershipRatio / 100);
+  const regionalResourceTaxStandard = safePropertyData.regionalResourceTaxStandard || 0;
+  
+  // 건물소유비율 사용 (항상 건물소유비율 기준)
+  const buildingOwnershipRatio = safePropertyData.buildingOwnershipRatio || safePropertyData.ownershipRatio || 100;
+  
+  // 건물소유비율 100% 기준 과세표준으로 역산
+  const fullOwnershipRegionalStandard = regionalResourceTaxStandard / (buildingOwnershipRatio / 100);
   // 100% 기준으로 세율 적용
   const fullOwnershipRegionalTax = calculateRegionalResourceTax(fullOwnershipRegionalStandard);
   
   // 원 단위 내림 적용
   const flooredFullOwnershipRegionalTax = Math.floor(fullOwnershipRegionalTax);
-  // 소유비율 적용 (내림된 값 사용)
-  regionalResourceTax = flooredFullOwnershipRegionalTax * (propertyData.ownershipRatio / 100);
+  // 건물소유비율 적용 (내림된 값 사용)
+  regionalResourceTax = flooredFullOwnershipRegionalTax * (buildingOwnershipRatio / 100);
   
   console.log('지역자원시설세 계산 디버그:', {
     regionalResourceTaxStandard,
@@ -597,7 +610,8 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     fullOwnershipRegionalTax,
     flooredFullOwnershipRegionalTax,
     beforeOwnership: regionalResourceTax,
-    ownershipRatio: propertyData.ownershipRatio
+    buildingOwnershipRatio: buildingOwnershipRatio,
+    separateBuildingLandOwnership: safePropertyData.separateBuildingLandOwnership
   });
   
   regionalResourceTax = Math.floor(regionalResourceTax / 10) * 10;
@@ -605,30 +619,30 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
   console.log('지역자원시설세 10원 미만 절사 후:', regionalResourceTax);
   
   // 표준세율 소유비율 적용
-  standardPropertyTax = standardPropertyTax * (propertyData.ownershipRatio / 100);
+  standardPropertyTax = standardPropertyTax * (safePropertyData.ownershipRatio / 100);
   standardPropertyTax = Math.floor(standardPropertyTax / 10) * 10;
   
   // 도시지역분 계산 - 과세표준 × 0.14% × 소유비율
-  let baseUrbanAreaTax = Math.floor((taxableStandard * 0.0014 * (propertyData.ownershipRatio / 100)) / 10) * 10;
+  let baseUrbanAreaTax = Math.floor((taxableStandard * 0.0014 * (safePropertyData.ownershipRatio / 100)) / 10) * 10;
   
   // 임대주택 감면율 적용 (60㎡ 초과인 경우 도시지역분 감면 제외)
-  if (propertyData.reductionType === "임대주택" && propertyData.currentYearReductionRate > 0) {
+  if (safePropertyData.reductionType === "임대주택" && safePropertyData.currentYearReductionRate > 0) {
     // 60㎡ 초과인 경우 도시지역분은 감면하지 않음
-    if (propertyData.rentalHousingArea && propertyData.rentalHousingArea > 60) {
+    if (safePropertyData.rentalHousingArea && safePropertyData.rentalHousingArea > 60) {
       // 60㎡ 초과 시 도시지역분 감면 적용하지 않음
     } else {
       // 60㎡ 이하인 경우만 도시지역분 감면 적용
-      baseUrbanAreaTax = Math.floor((baseUrbanAreaTax * (1 - propertyData.currentYearReductionRate / 100)) / 10) * 10;
+      baseUrbanAreaTax = Math.floor((baseUrbanAreaTax * (1 - safePropertyData.currentYearReductionRate / 100)) / 10) * 10;
     }
   }
   
   // 도시지역분 세부담상한제 적용
-  if (propertyData.propertyType !== "다가구주택") {
+  if (safePropertyData.propertyType !== "다가구주택") {
     urbanAreaTax = baseUrbanAreaTax;
   }
-  if (propertyData.previousYear.urbanAreaTax > 0) {
+  if (safePropertyData.previousYear.urbanAreaTax > 0) {
     // 전년도 도시지역분 결정세액 × 세부담상한율
-    const urbanAreaTaxCap = Math.floor((propertyData.previousYear.urbanAreaTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10;
+    const urbanAreaTaxCap = Math.floor((safePropertyData.previousYear.urbanAreaTax * (safePropertyData.taxBurdenCapRate / 100)) / 10) * 10;
     urbanAreaTax = Math.min(baseUrbanAreaTax, urbanAreaTaxCap);
   }
   
@@ -645,7 +659,7 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
   const halfYearTaxForDetails = propertyTaxHalfForDetails + urbanAreaTaxHalfForDetails + localEducationTaxHalfForDetails;
   
   // 단일 주택에서만 분기별 세액 설명 추가
-  if (propertyData.propertyType !== "다가구주택") {
+  if (safePropertyData.propertyType !== "다가구주택") {
     const regionalResourceTaxHalfForDetails = Math.floor((regionalResourceTax * 0.5) / 10) * 10;
     const fullHalfYearTaxForDetails = halfYearTaxForDetails + regionalResourceTaxHalfForDetails;
     
@@ -677,8 +691,9 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
       calculationDetails += `\n• 계산: ${formatNumberWithCommas(fullOwnershipRegionalStandard)}원 × 0.12% - 27,700원 = ${formatNumberWithCommas(fullOwnershipRegionalTax)}원`;
     }
     
-    if (propertyData.ownershipRatio < 100) {
-      calculationDetails += `\n• 소유비율 적용: ${formatNumberWithCommas(Math.floor(fullOwnershipRegionalTax))}원 × ${propertyData.ownershipRatio}% = ${formatNumberWithCommas(regionalResourceTax)}원`;
+    if (buildingOwnershipRatio < 100) {
+      const ownershipLabel = safePropertyData.buildingOwnershipRatio ? "건물소유비율" : "재산비율";
+      calculationDetails += `\n• ${ownershipLabel} 적용: ${formatNumberWithCommas(Math.floor(fullOwnershipRegionalTax))}원 × ${buildingOwnershipRatio}% = ${formatNumberWithCommas(regionalResourceTax)}원`;
     }
     
     calculationDetails += `\n\n지역자원시설세: ${formatNumberWithCommas(regionalResourceTax)}원`;
@@ -709,24 +724,24 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
   let previousYearEquivalentWithReduction = 0;
   let finalTaxBurdenCapAmount = 0;
 
-  if (propertyData.previousYear.taxableStandard > 0 || propertyData.previousYear.actualPaidTax > 0) {
+  if (safePropertyData.previousYear.taxableStandard > 0 || safePropertyData.previousYear.actualPaidTax > 0) {
     const previousYearData = calculatePreviousYearEquivalent(
-      propertyData.previousYear,
+      safePropertyData.previousYear,
       taxableStandard,
-      propertyData.currentYearReductionRate,
-      propertyData.isSingleHousehold,
-      propertyData.publicPrice,
-      propertyData.propertyType
+      safePropertyData.currentYearReductionRate,
+      safePropertyData.isSingleHousehold,
+      safePropertyData.publicPrice,
+      safePropertyData.propertyType
     );
 
     previousYearEquivalent = previousYearData.withoutReduction;
     previousYearEquivalentWithReduction = previousYearData.withReduction;
     
     // 실제 사용된 세부담상한액을 저장 (전년도 실제 납부세액 기준)
-    if (propertyData.previousYear.actualPaidTax > 0) {
-      finalTaxBurdenCapAmount = Math.floor((propertyData.previousYear.actualPaidTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10;
+    if (safePropertyData.previousYear.actualPaidTax > 0) {
+      finalTaxBurdenCapAmount = Math.floor((safePropertyData.previousYear.actualPaidTax * (safePropertyData.taxBurdenCapRate / 100)) / 10) * 10;
     } else {
-      finalTaxBurdenCapAmount = Math.floor((previousYearEquivalent * (propertyData.taxBurdenCapRate / 100)) / 10) * 10;
+      finalTaxBurdenCapAmount = Math.floor((previousYearEquivalent * (safePropertyData.taxBurdenCapRate / 100)) / 10) * 10;
     }
   }
   
@@ -734,13 +749,13 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
   let baseSpecialRateAmount = 0;
   let baseStandardRateAmount = 0;
   
-  if (propertyData.propertyType === "다가구주택") {
+  if (safePropertyData.propertyType === "다가구주택") {
     // 다가구주택의 경우 - 소유비율 적용 전 값 계산
-    baseSpecialRateAmount = basePropertyTaxWithOwnership / (propertyData.ownershipRatio / 100);
-    baseStandardRateAmount = calculateMultiUnitPropertyTax(propertyData.multiUnits, false, false).totalTax; // 소유비율 미적용
+    baseSpecialRateAmount = basePropertyTaxWithOwnership / (safePropertyData.ownershipRatio / 100);
+    baseStandardRateAmount = calculateMultiUnitPropertyTax(safePropertyData.multiUnits, false, false).totalTax; // 소유비율 미적용
   } else {
     // 일반 주택의 경우 - 1세대 1주택 특례세율 적용 여부에 따라 구분
-    const isSpecialRateApplicable = propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000;
+    const isSpecialRateApplicable = safePropertyData.isSingleHousehold && safePropertyData.publicPrice <= 900000000;
     
     if (isSpecialRateApplicable) {
       baseSpecialRateAmount = calculateSpecialRatePropertyTax(taxableStandard);
@@ -775,7 +790,7 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     previousYearEquivalentWithReduction,
     taxBurdenCapAmount: finalTaxBurdenCapAmount,
     finalTaxAmount: propertyTax,
-    reductionAppliedAmount: propertyData.currentYearReductionRate > 0 ? Math.floor((propertyTax * (propertyData.currentYearReductionRate / 100)) / 10) * 10 : 0
+    reductionAppliedAmount: safePropertyData.currentYearReductionRate > 0 ? Math.floor((propertyTax * (safePropertyData.currentYearReductionRate / 100)) / 10) * 10 : 0
   };
   
   console.log("계산 결과:", calculationResult);

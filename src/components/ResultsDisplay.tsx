@@ -281,9 +281,15 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
       regionalTaxAfterProcessing = totalRegionalTax;
       
     } else {
-      // 단일 주택의 경우 기존 로직 유지
+      // 단일 주택의 경우 건물소유비율 기준 적용
       const regionalResourceTaxStandard = propertyData.regionalResourceTaxStandard || 0;
-      explanation += `- 지역자원시설세 과세표준 (소유비율 ${propertyData.ownershipRatio}%): ${formatCurrency(regionalResourceTaxStandard)}원\n`;
+      
+      // 건물소유비율 사용 (항상 건물소유비율 기준)
+      const buildingOwnershipRatio = propertyData.buildingOwnershipRatio || propertyData.ownershipRatio;
+      
+      const ownershipLabel = propertyData.buildingOwnershipRatio ? "건물소유비율" : "재산비율";
+      
+      explanation += `- 지역자원시설세 과세표준 (${ownershipLabel} ${buildingOwnershipRatio}%): ${formatCurrency(regionalResourceTaxStandard)}원\n`;
       
       if (propertyData.regionalResourceTaxStandard) {
         explanation += `  (입력된 지역자원시설세 과세표준 적용)\n`;
@@ -291,9 +297,9 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
         explanation += `  (미입력으로 0원 적용)\n`;
       }
       
-      // 소유비율 100% 기준 과세표준으로 역산
-      const fullOwnershipRegionalStandard = regionalResourceTaxStandard / (propertyData.ownershipRatio / 100);
-      explanation += `- 소유비율 100% 기준 과세표준: ${formatCurrency(regionalResourceTaxStandard)} ÷ ${propertyData.ownershipRatio}% = ${formatCurrency(fullOwnershipRegionalStandard)}원\n`;
+      // 건물소유비율 100% 기준 과세표준으로 역산
+      const fullOwnershipRegionalStandard = regionalResourceTaxStandard / (buildingOwnershipRatio / 100);
+      explanation += `- ${ownershipLabel} 100% 기준 과세표준: ${formatCurrency(regionalResourceTaxStandard)} ÷ ${buildingOwnershipRatio}% = ${formatCurrency(fullOwnershipRegionalStandard)}원\n`;
       
       // 구간별 세율 적용 설명 (100% 기준으로)
       let regionalTaxDesc = "";
@@ -322,9 +328,9 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
       explanation += `- 세율 적용 (100% 기준): ${regionalTaxDesc}\n`;
       explanation += `- 세율 적용 후 세액 (100% 기준): ${formatCurrency(regionalBaseTax)}원\n`;
       
-      // 소유비율 적용
-      const regionalTaxAfterOwnership = regionalBaseTax * (propertyData.ownershipRatio / 100);
-      explanation += `- 소유비율 적용: ${formatCurrency(regionalBaseTax)} × ${propertyData.ownershipRatio}% = ${formatCurrency(regionalTaxAfterOwnership)}원\n`;
+      // 건물소유비율 적용
+      const regionalTaxAfterOwnership = regionalBaseTax * (buildingOwnershipRatio / 100);
+      explanation += `- ${ownershipLabel} 적용: ${formatCurrency(regionalBaseTax)} × ${buildingOwnershipRatio}% = ${formatCurrency(regionalTaxAfterOwnership)}원\n`;
       
       // 지역자원시설세는 1세대 1주택 특례 적용 없음
       regionalTaxAfterProcessing = regionalTaxAfterOwnership;
@@ -438,7 +444,7 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
               </p>
             </div>
             <div className="text-center p-4 bg-rose-50 rounded-lg">
-              <h4 className="font-medium text-gray-700 mb-2">소유비율</h4>
+              <h4 className="font-medium text-gray-700 mb-2">재산비율</h4>
               <p className="text-2xl font-bold text-rose-700">
                 {propertyData.ownershipRatio}%
               </p>
@@ -538,8 +544,14 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                   </>
                 )}
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                  <span className="text-sm text-gray-600 block mb-1">소유비율</span>
-                  <p className="font-semibold text-gray-800">{propertyData.ownershipRatio}%</p>
+                  <span className="text-sm text-gray-600 block mb-1">재산비율</span>
+                  <div className="space-y-1">
+                    <p className="font-semibold text-gray-800">{propertyData.ownershipRatio}%</p>
+                    <div className="text-xs text-gray-600">
+                      <div>건물: {propertyData.buildingOwnershipRatio || propertyData.ownershipRatio}%</div>
+                      <div>토지: {propertyData.landOwnershipRatio || propertyData.ownershipRatio}%</div>
+                    </div>
+                  </div>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                   <span className="text-sm text-gray-600 block mb-1">1세대 1주택자</span>
@@ -809,10 +821,15 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
               <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-200">6. 지역자원시설세 계산</h3>
               <div className="space-y-4">
                 {(() => {
-                  const regionalResourceTaxStandard = propertyData.regionalResourceTaxStandard || result.taxableStandard;
+                  const regionalResourceTaxStandard = propertyData.regionalResourceTaxStandard || 0;
                   
-                  // 소유비율 100% 기준 과세표준으로 역산
-                  const fullOwnershipRegionalStandard = regionalResourceTaxStandard / (propertyData.ownershipRatio / 100);
+                  // 건물소유비율 사용 (항상 건물소유비율 기준)
+                  const buildingOwnershipRatio = propertyData.buildingOwnershipRatio || propertyData.ownershipRatio;
+                  
+                  const ownershipLabel = propertyData.buildingOwnershipRatio ? "건물소유비율" : "재산비율";
+                  
+                  // 건물소유비율 100% 기준 과세표준으로 역산
+                  const fullOwnershipRegionalStandard = regionalResourceTaxStandard / (buildingOwnershipRatio / 100);
                   
                   let regionalTaxRateDescription = "";
                   let regionalBaseTaxAmount = 0;
@@ -837,9 +854,9 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                     regionalBaseTaxAmount = 49100 + (fullOwnershipRegionalStandard - 64000000) * 0.0012;
                   }
                   
-                  // 소유비율 적용 (표시용 내림된 값 사용)
+                  // 건물소유비율 적용 (표시용 내림된 값 사용)
                   const flooredRegionalBaseTaxAmount = Math.floor(regionalBaseTaxAmount);
-                  const regionalTaxAfterOwnership = flooredRegionalBaseTaxAmount * (propertyData.ownershipRatio / 100);
+                  const regionalTaxAfterOwnership = flooredRegionalBaseTaxAmount * (buildingOwnershipRatio / 100);
                   // 10원 미만 절사 적용
                   const regionalTaxAfterRounding = Math.floor(regionalTaxAfterOwnership / 10) * 10;
                   let regionalTaxAfterProcessing = regionalTaxAfterRounding;
@@ -848,8 +865,8 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                   console.log('지역자원시설세 표시 디버그:', {
                     regionalBaseTaxAmount,
                     flooredRegionalBaseTaxAmount,
-                    ownershipRatio: propertyData.ownershipRatio,
-                    calculation: `${flooredRegionalBaseTaxAmount} × ${propertyData.ownershipRatio}% = ${regionalTaxAfterOwnership}`,
+                    buildingOwnershipRatio,
+                    calculation: `${flooredRegionalBaseTaxAmount} × ${buildingOwnershipRatio}% = ${regionalTaxAfterOwnership}`,
                     regionalTaxAfterRounding,
                     fullOwnershipRegionalStandard,
                     regionalResourceTaxStandard
@@ -858,7 +875,7 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                   return (
                     <>
                       <div className="bg-cyan-50 p-4 rounded-lg border border-cyan-200">
-                        <span className="text-sm text-gray-600 block mb-1">지역자원시설세 과세표준 확정 (소유비율 {propertyData.ownershipRatio}%)</span>
+                        <span className="text-sm text-gray-600 block mb-1">지역자원시설세 과세표준 확정 ({ownershipLabel} {buildingOwnershipRatio}%)</span>
                         <p className="text-gray-700">
                           {formatCurrency(regionalResourceTaxStandard)}원{" "}
                           {propertyData.regionalResourceTaxStandard ? "(입력된 지역자원시설세 과세표준 적용)" : "(미입력으로 0원 적용)"}
@@ -866,9 +883,9 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                       </div>
                       
                       <div className="bg-cyan-50 p-4 rounded-lg border border-cyan-200">
-                        <span className="text-sm text-gray-600 block mb-1">소유비율 100% 기준 과세표준</span>
+                        <span className="text-sm text-gray-600 block mb-1">{ownershipLabel} 100% 기준 과세표준</span>
                         <p className="text-gray-700">
-                          {formatCurrency(regionalResourceTaxStandard)} ÷ {propertyData.ownershipRatio}% = {formatCurrency(fullOwnershipRegionalStandard)}원
+                          {formatCurrency(regionalResourceTaxStandard)} ÷ {buildingOwnershipRatio}% = {formatCurrency(fullOwnershipRegionalStandard)}원
                         </p>
                       </div>
                       
@@ -879,9 +896,9 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                       </div>
                       
                       <div className="bg-cyan-50 p-4 rounded-lg border border-cyan-200">
-                        <span className="text-sm text-gray-600 block mb-1">소유비율 적용</span>
+                        <span className="text-sm text-gray-600 block mb-1">{ownershipLabel} 적용</span>
                         <p className="text-gray-700">
-                          {flooredRegionalBaseTaxAmount}원 × {propertyData.ownershipRatio}% = {regionalTaxAfterOwnership.toFixed(4)}원
+                          {flooredRegionalBaseTaxAmount}원 × {buildingOwnershipRatio}% = {regionalTaxAfterOwnership.toFixed(4)}원
                         </p>
                       </div>
                       

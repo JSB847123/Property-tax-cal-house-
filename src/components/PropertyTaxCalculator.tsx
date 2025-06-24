@@ -42,7 +42,13 @@ const PropertyTaxCalculator = () => {
       hasAreaChange: false,
       hasUsageChange: false,
       urbanAreaTax: 0
-    }
+    },
+    // 건물/토지 소유비율 구분 기능
+    separateBuildingLandOwnership: false,
+    buildingOwnershipRatio: 100,
+    landOwnershipRatio: 100,
+    // 토지감면율
+    landReductionRate: 0
   };
 
   const [propertyData, setPropertyData] = useState<PropertyData>(initialPropertyData);
@@ -1560,20 +1566,85 @@ const PropertyTaxCalculator = () => {
             {/* 소유비율 */}
             <div className="space-y-2">
               <Label htmlFor="ownershipRatio" className="text-sm font-medium text-gray-700">
-                소유비율 (%)
+                재산비율 (%)
               </Label>
+              
+              {/* 재산비율 입력칸 - 항상 표시 */}
               <Input
                 id="ownershipRatio"
                 type="number"
                 min="0"
                 max="100"
-                value={propertyData.ownershipRatio || ""}
-                onChange={(e) => setPropertyData(prev => ({
-                  ...prev,
-                  ownershipRatio: Number(e.target.value)
-                }))}
+                value={propertyData.ownershipRatio !== undefined && propertyData.ownershipRatio !== null ? propertyData.ownershipRatio : ""}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  const ownershipRatio = value === "" ? undefined : Number(value);
+                  setPropertyData(prev => ({
+                    ...prev,
+                    ownershipRatio: ownershipRatio
+                  }))
+                }}
                 className="text-lg"
               />
+              
+              {/* 건물/토지 소유비율 입력칸 - 항상 표시 */}
+              <div className="space-y-3 mt-3">
+                <div className="space-y-1">
+                  <Label className="text-xs text-gray-600">건물소유비율 (%)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={propertyData.buildingOwnershipRatio !== undefined && propertyData.buildingOwnershipRatio !== null ? propertyData.buildingOwnershipRatio : ""}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      const buildingRatio = value === "" ? undefined : Number(value);
+                      setPropertyData(prev => ({
+                        ...prev,
+                        buildingOwnershipRatio: buildingRatio
+                      }))
+                    }}
+                    className="text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-gray-600">토지소유비율 (%)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={propertyData.landOwnershipRatio !== undefined && propertyData.landOwnershipRatio !== null ? propertyData.landOwnershipRatio : ""}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      const landRatio = value === "" ? undefined : Number(value);
+                      setPropertyData(prev => ({
+                        ...prev,
+                        landOwnershipRatio: landRatio
+                      }))
+                    }}
+                    className="text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-gray-600">토지감면율 (%)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={propertyData.landReductionRate !== undefined && propertyData.landReductionRate !== null ? propertyData.landReductionRate : ""}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      const reductionRate = value === "" ? undefined : Number(value);
+                      setPropertyData(prev => ({
+                        ...prev,
+                        landReductionRate: reductionRate
+                      }))
+                    }}
+                    placeholder="0"
+                    className="text-sm"
+                  />
+                </div>
+              </div>
             </div>
 
             {/* 지역자원시설세 과세표준 (일반 주택만) */}
