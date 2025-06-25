@@ -34,6 +34,12 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
   let urbanAreaTax = 0;
   let calculationDetails = "";
   let basePropertyTaxWithOwnership = 0;
+  
+  // 단독주택 지역자원시설세 계산 변수들 (계산 설명용)
+  let regionalResourceTaxStandard = 0;
+  let fullOwnershipRegionalStandard = 0;
+  let fullOwnershipRegionalTax = 0;
+  let buildingOwnershipRatio = 100;
 
   if (safePropertyData.propertyType === "다가구주택") {
     // 다가구주택의 경우 - 구별로 정확한 계산
@@ -588,35 +594,32 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     standardPropertyTax = calculateStandardPropertyTax(taxableStandard);
   }
   
-  // 지역자원시설세 계산 - 별도 과세표준이 있으면 사용, 없으면 0원 사용
-  const regionalResourceTaxStandard = safePropertyData.regionalResourceTaxStandard || 0;
-  
-  // 건물소유비율 사용 (항상 건물소유비율 기준)
-  const buildingOwnershipRatio = safePropertyData.buildingOwnershipRatio || safePropertyData.ownershipRatio || 100;
-  
-  // 건물소유비율 100% 기준 과세표준으로 역산
-  const fullOwnershipRegionalStandard = regionalResourceTaxStandard / (buildingOwnershipRatio / 100);
-  // 100% 기준으로 세율 적용
-  const fullOwnershipRegionalTax = calculateRegionalResourceTax(fullOwnershipRegionalStandard);
-  
-  // 원 단위 내림 적용
-  const flooredFullOwnershipRegionalTax = Math.floor(fullOwnershipRegionalTax);
-  // 건물소유비율 적용 (내림된 값 사용)
-  regionalResourceTax = flooredFullOwnershipRegionalTax * (buildingOwnershipRatio / 100);
-  
-  console.log('지역자원시설세 계산 디버그:', {
-    regionalResourceTaxStandard,
-    fullOwnershipRegionalStandard,
-    fullOwnershipRegionalTax,
-    flooredFullOwnershipRegionalTax,
-    beforeOwnership: regionalResourceTax,
-    buildingOwnershipRatio: buildingOwnershipRatio,
-    separateBuildingLandOwnership: safePropertyData.separateBuildingLandOwnership
-  });
-  
-  regionalResourceTax = Math.floor(regionalResourceTax / 10) * 10;
-  
-  console.log('지역자원시설세 10원 미만 절사 후:', regionalResourceTax);
+  // 지역자원시설세는 다가구주택인 경우 이미 계산됨 (323줄에서 설정)
+  // 단독주택인 경우에만 별도 계산 수행
+  if (safePropertyData.propertyType !== "다가구주택") {
+    // 단독주택인 경우: 별도 과세표준 사용
+    regionalResourceTaxStandard = safePropertyData.regionalResourceTaxStandard || 0;
+    
+    // 건물소유비율 사용 (항상 건물소유비율 기준)
+    buildingOwnershipRatio = safePropertyData.buildingOwnershipRatio || safePropertyData.ownershipRatio || 100;
+    
+    // 건물소유비율 100% 기준 과세표준으로 역산
+    fullOwnershipRegionalStandard = regionalResourceTaxStandard / (buildingOwnershipRatio / 100);
+    
+    // 100% 기준으로 세율 적용
+    fullOwnershipRegionalTax = calculateRegionalResourceTax(fullOwnershipRegionalStandard);
+    
+    // 원 단위 내림 적용
+    const flooredFullOwnershipRegionalTax = Math.floor(fullOwnershipRegionalTax);
+    
+    // 건물소유비율 적용 (내림된 값 사용)
+    regionalResourceTax = flooredFullOwnershipRegionalTax * (buildingOwnershipRatio / 100);
+    regionalResourceTax = Math.floor(regionalResourceTax / 10) * 10;
+    
+    console.log('단독주택 지역자원시설세 계산 완료:', regionalResourceTax);
+  } else {
+    console.log('다가구주택 지역자원시설세는 이미 계산됨:', regionalResourceTax);
+  }
   
   // 표준세율 소유비율 적용
   standardPropertyTax = standardPropertyTax * (safePropertyData.ownershipRatio / 100);

@@ -1366,10 +1366,10 @@ const PropertyTaxCalculator = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-white to-neutral-100 p-4">
       {/* 입력 섹션 */}
-      <Card className="shadow-lg border-0 bg-white/80 backdrop-blur">
-        <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
+      <Card className="shadow-modern-lg border-0 bg-white/90 backdrop-blur">
+        <CardHeader className="gradient-primary text-white rounded-t-lg">
           <CardTitle className="flex items-center justify-between text-xl">
             <div className="flex items-center gap-2">
               <Home className="w-6 h-6" />
@@ -1382,7 +1382,7 @@ const PropertyTaxCalculator = () => {
                     <span className="text-xs">연결 확인 중...</span>
                   </div>
                 ) : isServerConnected ? (
-                  <div className="flex items-center gap-1 text-green-200">
+                  <div className="flex items-center gap-1 text-emerald-200">
                     <Wifi className="w-4 h-4" />
                     <span className="text-xs">서버 연결됨</span>
                   </div>
@@ -1514,7 +1514,7 @@ const PropertyTaxCalculator = () => {
                     className="text-lg flex-1"
                   />
                   {propertyData.isSingleHousehold && propertyData.publicPrice > 0 && propertyData.publicPrice <= 900000000 && (
-                    <div className="bg-green-100 text-green-800 px-3 py-2 rounded-lg border border-green-200 text-sm font-medium whitespace-nowrap">
+                    <div className="bg-emerald-100 text-emerald-800 px-3 py-2 rounded-lg border border-emerald-200 text-sm font-medium whitespace-nowrap">
                       특례세율 적용
                     </div>
                   )}
@@ -1554,7 +1554,7 @@ const PropertyTaxCalculator = () => {
                   className="text-lg flex-1"
                 />
                 {propertyData.isSingleHousehold && propertyData.publicPrice > 0 && propertyData.publicPrice <= 900000000 && (
-                  <div className="bg-green-100 text-green-800 px-3 py-2 rounded-lg border border-green-200 text-sm font-medium whitespace-nowrap">
+                  <div className="bg-emerald-100 text-emerald-800 px-3 py-2 rounded-lg border border-emerald-200 text-sm font-medium whitespace-nowrap">
                     특례세율 적용
                   </div>
                 )}
@@ -1956,7 +1956,7 @@ const PropertyTaxCalculator = () => {
           
           <Button 
             onClick={calculateTax}
-            className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-lg py-6"
+                            className="w-full gradient-professional hover:opacity-90 transition-opacity text-white text-lg py-6"
             disabled={!isCalculationEnabled()}
           >
             <Calculator className="w-5 h-5 mr-2" />
@@ -2006,7 +2006,7 @@ const PropertyTaxCalculator = () => {
                   <Button
                     onClick={generateComparisonReport}
                     disabled={selectedCalculations.length !== 2}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    className="gradient-professional hover:opacity-90 transition-opacity text-white"
                     size="sm"
                   >
                     <BarChart3 className="w-4 h-4 mr-2" />

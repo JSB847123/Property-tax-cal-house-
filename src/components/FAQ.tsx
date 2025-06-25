@@ -56,7 +56,7 @@ const FAQ = () => {
 
   return (
     <Card className="shadow-lg border-0 bg-white/80 backdrop-blur">
-      <CardHeader className="bg-gradient-to-r from-amber-600 to-amber-700 text-white rounded-t-lg">
+      <CardHeader className="gradient-primary text-white rounded-t-lg">
         <CardTitle className="flex items-center gap-2 text-xl">
           <HelpCircle className="w-6 h-6" />
           자주 들어오는 질문
