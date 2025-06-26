@@ -7,7 +7,6 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calculator, Home, RotateCcw, Save, Clock, Trash2, Printer, FileDown, BarChart3, Server, Wifi, WifiOff } from "lucide-react";
-import CalculationSteps from "./CalculationSteps";
 import ResultsDisplay from "./ResultsDisplay";
 import MultiUnitInputs from "./MultiUnitInputs";
 import FAQ from "./FAQ";
@@ -2065,9 +2064,6 @@ const PropertyTaxCalculator = () => {
 
       {/* 자주 들어오는 질문 */}
       <FAQ />
-
-      {/* 계산 단계 설명 */}
-      <CalculationSteps />
 
       {/* 페이지 하단 저장 버튼 */}
       {result && (
