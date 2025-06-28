@@ -3,10 +3,10 @@
     "tasks": [
       {
         "id": 1,
-        "title": "다가구주택 세율 적용 로직 분석 및 설계",
-        "description": "현재 재산세 계산기의 다가구주택 세율 적용 로직을 분석하고, 각 구별 과세표준에 맞는 세율 적용 방식으로 개선하기 위한 설계를 수행합니다.",
-        "details": "1. 현재 코드베이스에서 재산세 계산 관련 컴포넌트와 로직 파악\n2. 다가구주택 세율 적용 방식 분석 (현재는 전체 과세표준에 세율 적용)\n3. 각 구별 과세표준에 개별 세율을 적용하는 새로운 로직 설계\n4. 특례세율 적용 조건 및 계산 방식 정의\n5. 계산 결과 표시 방식 설계\n\n```typescript\n// 예상 인터페이스\ninterface MultiUnitHouseTax {\n  totalPublicPrice: number;  // 주택공시가격 총액\n  units: {\n    standardPrice: number;  // 구별 과세표준\n    isSpecialRate: boolean; // 특례세율 적용 여부\n    calculatedTax: number;  // 계산된 세액\n  }[];\n  totalTax: number;         // 최종 재산세 본세\n}\n\n// 세율 적용 함수 설계\nfunction calculateUnitTax(standardPrice: number, isSpecialRate: boolean): number {\n  // 각 구별 과세표준에 맞는 세율 적용 로직\n  // 특례세율 적용 여부에 따른 분기 처리\n}\n```",
-        "testStrategy": "1. 현재 코드베이스의 재산세 계산 로직 테스트 케이스 작성\n2. PRD에 제시된 예시 데이터를 기반으로 예상 결과값 정의\n3. 새로운 설계에 대한 단위 테스트 계획 수립\n4. 기존 일반 주택 계산 기능과의 호환성 테스트 계획",
+        "title": "기존 코드 분석 및 설계 문서 작성",
+        "description": "현재 구현된 재산세 계산 로직과 전세사기 감면 관련 코드를 분석하고, 개선된 로직 구현을 위한 설계 문서를 작성합니다.",
+        "details": "1. `mainTaxCalculation.ts` 파일의 기존 로직 분석\n2. 현재 전세사기 감면 적용 방식 파악\n3. 1세대 1주택 특례세율 적용 로직 분석\n4. 세부담상한제 적용 로직 분석\n5. 개선된 2단계 비교 로직 설계 문서 작성\n   - 표준세율 + 전세사기 감면 vs 1세대 1주택 특례세율 비교 로직\n   - 세부담상한제 비교 로직\n6. 필요한 함수 및 인터페이스 정의\n7. 기존 코드와의 통합 방안 설계",
+        "testStrategy": "설계 문서 검토 회의를 통해 요구사항 충족 여부 확인. 특히 2단계 비교 로직이 PRD에 명시된 대로 설계되었는지 검증.",
         "priority": "high",
         "dependencies": [],
         "status": "done",
@@ -14,630 +14,468 @@
       },
       {
         "id": 2,
-        "title": "다가구주택 세율 계산 로직 구현",
-        "description": "각 구별 과세표준에 해당하는 세율을 정확히 적용하여 재산세를 계산하는 핵심 로직을 구현합니다.",
-        "details": "1. 다가구주택의 각 구별 과세표준 계산 함수 구현\n2. 과세표준별 세율 적용 함수 구현\n3. 1세대 1주택 특례세율 적용 로직 구현\n4. 각 구별 계산 결과 합산 로직 구현\n\n```typescript\n// 세율 구간 정의\nconst TAX_RATES = [\n  { min: 0, max: 60000000, rate: 0.001, deduction: 0 },\n  { min: 60000000, max: 150000000, rate: 0.0015, deduction: 30000 },\n  { min: 150000000, max: 300000000, rate: 0.0025, deduction: 180000 },\n  { min: 300000000, max: Infinity, rate: 0.004, deduction: 630000 }\n];\n\n// 특례세율 구간 정의\nconst SPECIAL_TAX_RATES = [\n  { min: 0, max: 60000000, rate: 0.0005, deduction: 0 },\n  { min: 60000000, max: 150000000, rate: 0.001, deduction: 30000 },\n  { min: 150000000, max: 300000000, rate: 0.002, deduction: 180000 },\n  { min: 300000000, max: Infinity, rate: 0.0035, deduction: 630000 }\n];\n\n// 각 구별 세액 계산 함수\nfunction calculateTaxForUnit(standardPrice: number, isSpecialRate: boolean): number {\n  const rates = isSpecialRate ? SPECIAL_TAX_RATES : TAX_RATES;\n  \n  // 해당 과세표준에 맞는 세율 구간 찾기\n  const taxBracket = rates.find(bracket => \n    standardPrice > bracket.min && standardPrice <= bracket.max\n  );\n  \n  if (!taxBracket) return 0;\n  \n  // 세액 계산: (과세표준 × 세율) - 누진공제액\n  return Math.floor((standardPrice * taxBracket.rate) - taxBracket.deduction);\n}\n\n// 다가구주택 전체 세액 계산\nfunction calculateMultiUnitHouseTax(units: Array<{standardPrice: number, isSpecialRate: boolean}>): number {\n  return units.reduce((total, unit) => {\n    return total + calculateTaxForUnit(unit.standardPrice, unit.isSpecialRate);\n  }, 0);\n}\n```",
-        "testStrategy": "1. 각 세율 구간별 테스트 케이스 작성\n2. 특례세율 적용/미적용 케이스 테스트\n3. PRD 예시 데이터 기반 통합 테스트\n   - 주택공시가격: 568,000,000원\n   - 1구 과세표준: 94,205,773원 (특례세율 적용)\n   - 2구 과세표준: 75,924,332원 (특례세율 적용)\n   - 3구 과세표준: 75,924,332원 (특례세율 적용)\n   - 예상 결과: 재산세 본세 159,650원\n4. 경계값 테스트 (세율 구간 경계값)\n5. 반올림/내림 처리 정확성 테스트",
-        "priority": "high",
+        "title": "전세사기 감면 전용 계산 함수 구현",
+        "description": "전세사기 감면을 위한 별도의 계산 함수를 구현하여 모듈화된 구조를 만듭니다.",
+        "status": "done",
         "dependencies": [
           1
         ],
-        "status": "done",
-        "subtasks": []
+        "priority": "high",
+        "details": "1. `calculateFraudLeaseReduction` 함수 생성\n2. 함수 파라미터 정의 (PropertyData 인터페이스 활용)\n```typescript\ninterface CalculationResult {\n  taxAmount: number;\n  calculationMethod: string;\n  details: {\n    standardRateWithReduction?: number;\n    specialRateAmount?: number;\n    selectedAmount: number;\n    taxLimitAmount?: number;\n    finalAmount: number;\n  };\n}\n\nfunction calculateFraudLeaseReduction(\n  propertyData: PropertyData,\n  standardTaxAmount: number,\n  previousYearTax: number\n): CalculationResult {\n  // 구현 내용\n}\n```\n3. 2단계 비교 로직 구현:\n   - Step 1: 표준세율 + 전세사기 감면 vs 1세대 1주택 특례세율 비교\n   - Step 2: Step 1 결과와 세부담상한제 적용액 비교\n4. 상세한 계산 과정 표시 추가\n5. 메인 계산 함수에서 전세사기 감면 선택 시 새로운 함수 호출하도록 수정",
+        "testStrategy": "단위 테스트를 통해 함수의 정확성 검증. PRD에 제시된 예시 시나리오 값을 입력하여 기대 출력과 일치하는지 확인. 다양한 입력값에 대한 테스트 케이스 작성. UI에서 테스트하여 정확성 검증.",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "calculateFraudLeaseReduction 함수 구현",
+            "description": "전세사기 감면 전용 계산 함수 구현 (파일 813라인부터)",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "2단계 비교 로직 구현",
+            "description": "Step 1: 표준세율 + 전세사기 감면 vs 1세대 1주택 특례세율 비교\nStep 2: Step 1 결과와 세부담상한제 적용액 비교",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "메인 계산 함수 연동",
+            "description": "메인 계산 함수에서 전세사기 감면 선택 시 새로운 함수 호출하도록 수정 (세부담상한제 미적용 시 처리 완료)",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "세부담상한제 적용 시 전세사기 감면 로직 완성",
+            "description": "세부담상한제 적용 시에도 전세사기 감면 로직이 올바르게 작동하도록 구현",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "UI 테스트 및 정확성 검증",
+            "description": "구현된 함수를 UI에서 테스트하여 계산 결과의 정확성 검증",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          }
+        ]
       },
       {
         "id": 3,
-        "title": "민원인 설명란 계산 과정 표시 기능 구현",
-        "description": "다가구주택 선택 시 민원인 설명란의 '3. 재산세 본세 계산' 부분에 각 구별 계산 과정을 상세히 표시하는 기능을 구현합니다.",
-        "details": "1. 민원인 설명란 컴포넌트 식별 및 분석\n2. 다가구주택 선택 시 계산 과정 표시 로직 구현\n3. 각 구별 계산 과정을 명확하게 표시하는 포맷 구현\n4. 최종 합계 과정 표시 로직 구현\n\n```typescript\n// 계산 과정 텍스트 생성 함수\nfunction generateTaxCalculationExplanation(units: Array<{standardPrice: number, isSpecialRate: boolean, calculatedTax: number}>, totalTax: number): string {\n  let explanation = '3. 재산세 본세 계산\\n';\n  \n  // 각 구별 계산 과정 설명\n  units.forEach((unit, index) => {\n    const unitNumber = index + 1;\n    const taxBracket = unit.isSpecialRate ? \n      SPECIAL_TAX_RATES.find(bracket => unit.standardPrice > bracket.min && unit.standardPrice <= bracket.max) :\n      TAX_RATES.find(bracket => unit.standardPrice > bracket.min && unit.standardPrice <= bracket.max);\n    \n    if (!taxBracket) return;\n    \n    explanation += `\\n${unitNumber}구 과세표준: ${formatNumber(unit.standardPrice)}원\\n`;\n    explanation += unit.isSpecialRate ? '(1세대 1주택 특례세율 적용)\\n' : '';\n    explanation += `세액 = ${formatNumber(unit.standardPrice)}원 × ${taxBracket.rate * 100}% - ${formatNumber(taxBracket.deduction)}원 = ${formatNumber(unit.calculatedTax)}원\\n`;\n  });\n  \n  // 최종 합계 설명\n  explanation += `\\n최종 재산세 본세 = ${units.map((unit, index) => `${index + 1}구 세액 ${formatNumber(unit.calculatedTax)}원`).join(' + ')} = ${formatNumber(totalTax)}원`;\n  \n  return explanation;\n}\n\n// 숫자 포맷팅 함수\nfunction formatNumber(num: number): string {\n  return num.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',');\n}\n```\n<info added on 2025-06-23T22:07:42.680Z>\n5. 서버 연결 설정 완료\n   - 백엔드 서버: 3004 포트로 설정 및 실행\n   - API 클라이언트: 3004 포트로 설정 완료\n   - 서버 헬스 체크 확인됨 (정상 작동 중)\n   - 프론트엔드 개발 서버: 백그라운드에서 실행 중\n\n6. 민원인 설명란 계산 과정 표시 기능 구현 준비 완료\n   - 기존 구현된 계산 과정 텍스트 생성 함수와 연동\n   - 백엔드 API와 통신하여 계산 결과 표시 로직 구현 예정\n</info added on 2025-06-23T22:07:42.680Z>\n<info added on 2025-06-23T22:13:08.805Z>\n7. 지역자원시설세 계산 부분 수정 필요\n   - 현재 generateDetailedExplanation 함수에서 지역자원시설세 계산이 단일 주택 방식으로 표시됨\n   - 다가구주택에서는 각 구별 과세표준과 세율을 따로 표시하도록 수정 필요\n   - 각 구별 과세표준 및 세율 적용 계산 과정 표시 로직 구현\n   - 예시 형식:\n     ```\n     지역자원시설세 과세표준\n       1구: 2,494,377원\n       2구: 2,058,003원  \n       3구: 2,058,003원\n     세율 적용 (100% 기준): \n       1구: 2,494,377원 × 10,000분의 4 = 997.7508\n       2구: 2,058,003원 × 10,000분의 4 = 823.2012\n       3구: 2,058,003원 × 10,000분의 4 = 823.2012\n     ```\n   - 최종 합계 계산 및 표시 로직 추가\n</info added on 2025-06-23T22:13:08.805Z>\n<info added on 2025-06-23T22:14:56.747Z>\n8. 지역자원시설세 계산 부분 민원인 설명란 수정 완료\n   - generateDetailedExplanation 함수에서 다가구주택 지역자원시설세 계산 로직 분리\n   - 다가구주택의 경우 각 구별 과세표준과 세율을 따로 표시하도록 구현\n   - 단일 주택의 경우 기존 로직 유지\n   - 구현된 표시 형식:\n     ```\n     6. 지역자원시설세 계산\n     - 지역자원시설세 과세표준\n     1구: 2,494,377원\n     2구: 2,058,003원\n     3구: 2,058,003원\n\n     - 세율 적용 (100% 기준):\n     1구: 2,494,377원 × 10,000분의 4 = 997.7508원\n     2구: 2,058,003원 × 10,000분의 4 = 823.2012원\n     3구: 2,058,003원 × 10,000분의 4 = 823.2012원\n\n     합계: 2644.1532원\n     - 10원 미만 절사 후 최종 지역자원시설세: 2,640원\n     ```\n   - propertyData.propertyType === \"다가구주택\" 조건으로 분기 처리\n   - 각 구별 과세표준에 새로운 6단계 세율 구간 적용\n   - 계산 과정을 상세히 표시하는 로직 구현\n   - TypeScript 컴파일 오류 해결 및 빌드 성공\n</info added on 2025-06-23T22:14:56.747Z>",
-        "testStrategy": "1. 다양한 다가구주택 케이스에 대한 설명 텍스트 생성 테스트\n2. 특례세율 적용/미적용 시 텍스트 차이 검증\n3. 숫자 포맷팅 정확성 테스트\n4. PRD 예시 데이터 기반 출력 텍스트 검증\n5. UI 렌더링 테스트 - 텍스트 줄바꿈, 정렬 등 가독성 확인\n6. 다양한 화면 크기에서의 표시 테스트",
-        "priority": "medium",
+        "title": "세부담상한제 비교 로직 구현",
+        "description": "전세사기 감면 계산 결과와 세부담상한제 적용액을 비교하는 로직을 구현합니다.",
+        "status": "done",
         "dependencies": [
           2
         ],
-        "status": "done",
-        "subtasks": []
+        "priority": "high",
+        "details": "세부담상한제 비교 로직이 `calculateFraudLeaseReduction` 함수에 구현되었습니다:\n\n1. 세부담상한제 계산 및 비교 로직:\n   - 전년도 실제 납부세액이 있는 경우: `taxBurdenCapAmount = previousYearActualPaidTax * (taxBurdenCapRate / 100)`\n   - Step 1 결과와 세부담상한액 비교: `Math.min(step1Result, taxBurdenCapAmount)`\n\n2. 엣지 케이스 처리:\n   - 전년도 납부세액이 없는 경우 세부담상한제 미적용 처리\n\n3. 계산 과정 상세 정보:\n   - Step 2 비교 결과에 대한 설명 포함\n   - 세부담상한제 적용 여부와 적용된 세액 표시\n\n4. 메인 계산 함수와의 통합:\n   - `calculateFraudLeaseReduction` 함수가 모든 세부담상한제 비교 로직 포함\n   - 메인 계산 함수에서는 이 함수의 결과를 그대로 사용",
+        "testStrategy": "단위 테스트를 통해 구현된 세부담상한제 계산 및 비교 로직의 정확성 검증:\n\n1. 다양한 세부담상한율과 전년도 세액 조합에 대한 테스트 케이스 검증\n2. 엣지 케이스 테스트:\n   - 전년도 납부세액이 없는 경우\n   - 세부담상한제가 적용되지 않는 경우\n   - 세부담상한액이 Step 1 결과보다 큰 경우와 작은 경우\n3. `calculateFraudLeaseReduction` 함수의 통합 테스트\n4. 계산 과정 상세 정보가 올바르게 생성되는지 검증",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "세부담상한제 계산 및 비교 로직 검증",
+            "description": "구현된 세부담상한제 계산 및 비교 로직이 정확하게 작동하는지 검증합니다.",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "엣지 케이스 테스트",
+            "description": "전년도 납부세액이 없는 경우 등 엣지 케이스에서 로직이 올바르게 작동하는지 테스트합니다.",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "계산 과정 상세 정보 검증",
+            "description": "세부담상한제 적용 과정이 상세 정보에 올바르게 표시되는지 확인합니다.",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          }
+        ]
       },
       {
         "id": 4,
-        "title": "다가구주택 입력 UI 개선 및 연동",
-        "description": "사용자가 다가구주택 정보를 입력할 수 있는 UI를 개선하고, 계산 로직과 연동합니다.",
-        "details": "1. 다가구주택 선택 UI 분석 및 개선\n2. 각 구별 과세표준 입력 필드 구현/개선\n3. 특례세율 적용 여부 선택 UI 구현/개선\n4. 입력값 유효성 검사 로직 구현\n5. 계산 로직과 UI 연동\n\n```typescript\n// 다가구주택 입력 컴포넌트 예시\nconst MultiUnitHouseInput: React.FC<{\n  onChange: (units: Array<{standardPrice: number, isSpecialRate: boolean}>) => void\n}> = ({ onChange }) => {\n  const [units, setUnits] = useState<Array<{standardPrice: number, isSpecialRate: boolean}>>([]);\n  const [unitCount, setUnitCount] = useState<number>(1);\n  \n  // 구 개수 변경 핸들러\n  const handleUnitCountChange = (count: number) => {\n    setUnitCount(count);\n    \n    // 구 개수에 맞게 배열 조정\n    const newUnits = Array(count).fill(null).map((_, index) => {\n      return units[index] || { standardPrice: 0, isSpecialRate: false };\n    });\n    \n    setUnits(newUnits);\n    onChange(newUnits);\n  };\n  \n  // 개별 구 정보 변경 핸들러\n  const handleUnitChange = (index: number, data: {standardPrice?: number, isSpecialRate?: boolean}) => {\n    const newUnits = [...units];\n    newUnits[index] = { ...newUnits[index], ...data };\n    \n    setUnits(newUnits);\n    onChange(newUnits);\n  };\n  \n  return (\n    <div className=\"multi-unit-house-input\">\n      <div className=\"unit-count-selector\">\n        <label>다가구주택 구 개수:</label>\n        <select \n          value={unitCount} \n          onChange={(e) => handleUnitCountChange(parseInt(e.target.value))}\n        >\n          {[1, 2, 3, 4, 5].map(num => (\n            <option key={num} value={num}>{num}구</option>\n          ))}\n        </select>\n      </div>\n      \n      {units.map((unit, index) => (\n        <div key={index} className=\"unit-input\">\n          <h4>{index + 1}구 정보</h4>\n          <div>\n            <label>과세표준:</label>\n            <input \n              type=\"number\" \n              value={unit.standardPrice} \n              onChange={(e) => handleUnitChange(index, { standardPrice: parseFloat(e.target.value) })}\n            />\n          </div>\n          <div>\n            <label>\n              <input \n                type=\"checkbox\" \n                checked={unit.isSpecialRate} \n                onChange={(e) => handleUnitChange(index, { isSpecialRate: e.target.checked })}\n              />\n              1세대 1주택 특례세율 적용\n            </label>\n          </div>\n        </div>\n      ))}\n    </div>\n  );\n};\n```",
-        "testStrategy": "1. 다가구주택 구 개수 변경 시 UI 업데이트 테스트\n2. 입력값 유효성 검사 테스트 (음수, 소수점, 빈 값 등)\n3. 특례세율 체크박스 동작 테스트\n4. 입력값 변경 시 계산 결과 업데이트 테스트\n5. 사용자 입력 시나리오 테스트 (PRD 예시 데이터 입력)\n6. 반응형 디자인 테스트 (다양한 화면 크기)\n7. 접근성 테스트 (키보드 탐색, 스크린 리더 호환성)",
-        "priority": "medium",
+        "title": "메인 계산 로직 통합",
+        "description": "구현된 전세사기 감면 계산 함수와 세부담상한제 비교 로직을 기존 mainTaxCalculation.ts에 통합합니다.",
+        "details": "1. `mainTaxCalculation.ts` 파일 수정\n2. 기존 전세사기 감면 로직을 새로운 함수 호출로 대체\n```typescript\n// 기존 코드\nif (propertyData.jeonseFraudReduction) {\n  taxAmount = taxAmount * 0.5; // 단순 50% 감면\n}\n\n// 새로운 코드\nif (propertyData.jeonseFraudReduction && propertyData.isSingleHouse) {\n  const result = calculateJeonseFraudReduction(\n    propertyData,\n    taxAmount,\n    propertyData.previousYearTax\n  );\n  taxAmount = result.finalAmount;\n  calculationDetails = { ...calculationDetails, ...result.details };\n  calculationMethod = result.calculationMethod;\n} else if (propertyData.jeonseFraudReduction) {\n  // 1세대 1주택이 아닌 경우 단순 50% 감면 적용\n  taxAmount = taxAmount * 0.5;\n  calculationMethod = '전세사기 감면(50%) 적용';\n}\n```\n3. 다른 감면 유형(임대주택, 노후연금)과의 충돌 방지 로직 구현\n4. 계산 과정 정보 저장 로직 통합",
+        "testStrategy": "통합 테스트를 통해 전체 계산 흐름 검증. 다양한 시나리오(전세사기 감면만 선택, 다른 감면과 함께 선택 등)에 대한 테스트 케이스 작성. 기존 기능이 정상 작동하는지 회귀 테스트 수행.",
+        "priority": "high",
         "dependencies": [
-          2
+          3
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
         "id": 5,
-        "title": "통합 테스트 및 버그 수정",
-        "description": "개선된 다가구주택 재산세 계산 기능을 전체 애플리케이션과 통합하고, 다양한 시나리오에서 테스트하여 버그를 수정합니다.",
-        "details": "1. 개발된 기능을 기존 애플리케이션에 통합\n2. 다양한 다가구주택 시나리오 테스트\n3. 일반 주택 계산 기능과의 호환성 테스트\n4. 발견된 버그 수정 및 재테스트\n5. 성능 최적화 (필요 시)\n\n```typescript\n// 통합 테스트를 위한 시나리오 예시\nconst testScenarios = [\n  // PRD 예시 시나리오\n  {\n    name: 'PRD 예시 케이스',\n    input: {\n      houseType: 'multiUnit',\n      totalPublicPrice: 568000000,\n      units: [\n        { standardPrice: 94205773, isSpecialRate: true },\n        { standardPrice: 75924332, isSpecialRate: true },\n        { standardPrice: 75924332, isSpecialRate: true }\n      ]\n    },\n    expectedOutput: {\n      totalTax: 159650\n    }\n  },\n  // 추가 테스트 시나리오들\n  {\n    name: '특례세율 미적용 케이스',\n    input: {\n      houseType: 'multiUnit',\n      totalPublicPrice: 500000000,\n      units: [\n        { standardPrice: 90000000, isSpecialRate: false },\n        { standardPrice: 80000000, isSpecialRate: false }\n      ]\n    },\n    expectedOutput: {\n      totalTax: 245000 // 계산된 예상 결과\n    }\n  },\n  // 일반 주택 케이스 (기존 기능 영향 없음 확인)\n  {\n    name: '일반 주택 케이스',\n    input: {\n      houseType: 'normal',\n      totalPublicPrice: 300000000,\n      isSpecialRate: true\n    },\n    expectedOutput: {\n      totalTax: 270000 // 계산된 예상 결과\n    }\n  }\n];\n\n// 테스트 실행 함수\nfunction runIntegrationTests() {\n  let passedTests = 0;\n  const totalTests = testScenarios.length;\n  \n  testScenarios.forEach(scenario => {\n    console.log(`테스트 시나리오: ${scenario.name}`);\n    \n    // 실제 계산 함수 호출\n    const result = calculatePropertyTax(scenario.input);\n    \n    // 결과 비교\n    if (result.totalTax === scenario.expectedOutput.totalTax) {\n      console.log('✅ 테스트 통과');\n      passedTests++;\n    } else {\n      console.error('❌ 테스트 실패');\n      console.error(`예상: ${scenario.expectedOutput.totalTax}, 실제: ${result.totalTax}`);\n    }\n    \n    console.log('-----------------------------------');\n  });\n  \n  console.log(`총 ${totalTests}개 테스트 중 ${passedTests}개 통과`);\n}\n```",
-        "testStrategy": "1. 자동화된 통합 테스트 스크립트 작성 및 실행\n2. PRD 예시 데이터 기반 E2E 테스트\n3. 다양한 다가구주택 구성에 대한 테스트 (1~5구)\n4. 특례세율 적용/미적용 조합 테스트\n5. 경계값 테스트 (세율 구간 경계값)\n6. 일반 주택 계산 기능 회귀 테스트\n7. 브라우저 호환성 테스트\n8. 사용자 시나리오 기반 수동 테스트",
-        "priority": "high",
+        "title": "계산 과정 표시 개선",
+        "description": "각 단계별 비교 과정을 상세히 표시하고 어떤 방식이 선택되었는지 명확히 안내하는 UI 개선을 구현합니다.",
+        "status": "done",
         "dependencies": [
-          2,
-          3,
+          4
+        ],
+        "priority": "medium",
+        "details": "계산 과정 표시 개선을 위한 상세 단계별 UI 구현:\n\n1. 적용 세율 섹션 추가\n   - 특례세율과 표준세율에 대한 상세 정보 표시\n\n2. 단계별 계산 과정 명확히 표시\n   - Step1: 과세표준을 적용한 계산 (특례세율 적용)\n   - Step2: 전세사기 감면을 50% 적용 (표준세율 + 감면)\n   - Step3: 비교 및 선택 (두 계산 방식 비교 결과)\n   - Step4: 세부담상한제 적용한 세액 확인 (세부담상한제 계산 과정)\n   - Step5: 세액 비교 및 선택 (최종 비교 과정)\n   - Step6: 최종 재산세 본세 (최종 결과)\n   - 기본 세액 정보 추가\n\n3. 계산 결과 표시 컴포넌트 수정\n```typescript\ninterface DetailedCalculation {\n  // 기본 세율 정보\n  standardRate: string;\n  specialRate: string;\n  \n  // 계산 과정 정보\n  step1SpecialRate: number;\n  step2StandardWithReduction: number;\n  step3Selected: number;\n  step3Method: string;\n  step4TaxLimit: number;\n  step5Selected: number;\n  step5Method: string;\n  step6FinalTax: number;\n  baseTaxAmount: number;\n  savingAmount: number;\n}\n\nfunction renderCalculationDetails(details: DetailedCalculation): JSX.Element {\n  return (\n    <div className=\"calculation-details\">\n      <h3>계산 과정</h3>\n      \n      <div className=\"tax-rates-section\">\n        <h4>적용 세율</h4>\n        <p>특례세율: {details.specialRate}</p>\n        <p>표준세율: {details.standardRate}</p>\n      </div>\n      \n      <div className=\"calculation-steps\">\n        <div className=\"step\">\n          <h4>Step1. 과세표준을 적용한 계산</h4>\n          <p>특례세율 적용: {formatCurrency(details.step1SpecialRate)}원</p>\n        </div>\n        \n        <div className=\"step\">\n          <h4>Step2. 전세사기 감면을 50% 적용</h4>\n          <p>표준세율 + 감면: {formatCurrency(details.step2StandardWithReduction)}원</p>\n        </div>\n        \n        <div className=\"step\">\n          <h4>Step3. 비교 및 선택</h4>\n          <p>특례세율 vs 표준세율+감면 → {formatCurrency(details.step3Selected)}원 선택 ({details.step3Method})</p>\n        </div>\n        \n        <div className=\"step\">\n          <h4>Step4. 세부담상한제 적용한 세액 확인</h4>\n          <p>세부담상한제: {formatCurrency(details.step4TaxLimit)}원</p>\n        </div>\n        \n        <div className=\"step\">\n          <h4>Step5. 세액 비교 및 선택</h4>\n          <p>Step3 결과 vs 세부담상한제 → {formatCurrency(details.step5Selected)}원 최종 선택 ({details.step5Method})</p>\n        </div>\n        \n        <div className=\"step\">\n          <h4>Step6. 최종 재산세 본세</h4>\n          <p>{formatCurrency(details.step6FinalTax)}원</p>\n          <p className=\"base-tax\">※ 기본 세액: {formatCurrency(details.baseTaxAmount)}원</p>\n          <p className=\"saving\">절약액: {formatCurrency(details.savingAmount)}원</p>\n        </div>\n      </div>\n    </div>\n  );\n}\n```\n\n4. 절약액 계산 및 표시 로직 구현\n5. 선택 이유 표시 로직 구현\n6. 기본 세액 정보 추가 및 표시",
+        "testStrategy": "1. UI 테스트를 통해 계산 과정이 명확하게 표시되는지 검증\n2. 다양한 계산 결과에 대한 표시 테스트 (특례세율 유리한 경우, 표준세율+감면 유리한 경우, 세부담상한제 적용 경우)\n3. 사용자 피드백을 통한 가독성 및 이해도 평가\n4. 개발 서버에서 실제 테스트 진행\n5. 모든 단계가 사용자 예시와 정확히 일치하는지 확인:\n   - Step별 명확한 구분과 번호 표시\n   - 계산 공식과 결과값 상세 표시\n   - 비교 과정과 선택 이유 명확히 표시\n   - 세부담상한제 계산 과정 상세 표시\n   - 최종 선택 이유와 절약 효과 명시",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "적용 세율 섹션 UI 구현",
+            "description": "특례세율과 표준세율에 대한 상세 정보를 표시하는 UI 섹션 구현",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "단계별 계산 과정 컴포넌트 구현",
+            "description": "Step1~Step6까지의 계산 과정을 명확히 표시하는 컴포넌트 구현",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "DetailedCalculation 인터페이스 확장",
+            "description": "새로운 계산 과정 표시에 필요한 필드를 추가하여 인터페이스 확장",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "renderCalculationDetails 함수 업데이트",
+            "description": "개선된 UI 요구사항에 맞게 렌더링 함수 업데이트",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "기본 세액 정보 및 절약액 표시 로직 구현",
+            "description": "기본 세액 정보 추가 및 절약액 계산 로직 구현",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "UI 스타일링 및 가독성 개선",
+            "description": "계산 과정 표시의 가독성을 높이기 위한 CSS 스타일링 작업",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 7,
+            "title": "개발 서버 테스트 준비",
+            "description": "개발 서버에서 실제 테스트를 위한 준비 작업",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "엣지 케이스 처리 및 예외 처리",
+        "description": "다양한 엣지 케이스와 예외 상황에 대한 처리 로직을 구현합니다.",
+        "details": "1. 전년도 재산세 정보가 없는 경우 처리\n```typescript\nif (!previousYearTax || previousYearTax <= 0) {\n  // 세부담상한제 미적용, 단순 비교만 수행\n  return {\n    taxAmount: Math.min(standardRateWithReduction, specialRateAmount),\n    calculationMethod: standardRateWithReduction <= specialRateAmount ? '표준세율 + 전세사기 감면' : '1세대 1주택 특례세율',\n    details: { ... }\n  };\n}\n```\n2. 1세대 1주택이 아닌 경우 처리\n3. 과세표준이 0 또는 음수인 경우 처리\n4. 세부담상한율이 설정되지 않은 경우 처리\n5. 계산 결과가 0 이하인 경우 처리\n6. 입력값 유효성 검사 로직 구현",
+        "testStrategy": "다양한 엣지 케이스에 대한 단위 테스트 작성. 예외 상황 시뮬레이션을 통한 오류 처리 검증. 경계값 테스트(0, 음수, 매우 큰 값 등).",
+        "priority": "medium",
+        "dependencies": [
           4
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 6,
-        "title": "지역자원시설세 계산 로직 구현 및 민원인 설명란 표시",
-        "description": "다가구주택의 지역자원시설세를 구별 과세표준에 맞는 세율로 계산하도록 개선하고, 민원인 설명란에 해당 계산 과정을 표시하는 기능을 구현합니다.",
-        "details": "1. 지역자원시설세 세율 구간 및 계산 규칙 정의\n```typescript\n// 지역자원시설세 세율 구간 정의\nconst RESOURCE_TAX_RATES = [\n  { min: 0, max: 60000000, rate: 0.00004, deduction: 0 },\n  { min: 60000000, max: 150000000, rate: 0.00005, deduction: 6000 },\n  { min: 150000000, max: 300000000, rate: 0.00006, deduction: 21000 },\n  { min: 300000000, max: Infinity, rate: 0.00008, deduction: 81000 }\n];\n```\n\n2. 다가구주택 각 구별 지역자원시설세 계산 함수 구현\n```typescript\nfunction calculateResourceTaxForUnit(standardPrice: number): number {\n  // 적절한 세율 구간 찾기\n  const taxBracket = RESOURCE_TAX_RATES.find(\n    bracket => standardPrice > bracket.min && standardPrice <= bracket.max\n  ) || RESOURCE_TAX_RATES[0];\n  \n  // 세액 계산 (과세표준 × 세율 - 누진공제액)\n  const tax = Math.floor((standardPrice * taxBracket.rate - taxBracket.deduction) / 10) * 10;\n  return Math.max(tax, 0); // 음수가 나오지 않도록 보정\n}\n```\n\n3. 다가구주택 전체 지역자원시설세 계산 함수 구현\n```typescript\nfunction calculateResourceTaxForMultiUnit(units: Array<{standardPrice: number}>): number {\n  // 각 구별 지역자원시설세 계산 및 합산\n  const totalTax = units.reduce((sum, unit) => {\n    return sum + calculateResourceTaxForUnit(unit.standardPrice);\n  }, 0);\n  \n  return totalTax;\n}\n```\n\n4. 기존 재산세 계산 로직과 통합\n```typescript\nfunction calculateTotalTaxForMultiUnit(units: Array<{standardPrice: number, isSpecialRate: boolean}>): {\n  propertyTax: number;\n  resourceTax: number;\n  totalTax: number;\n} {\n  // 재산세 계산 (기존 Task 2에서 구현한 로직 활용)\n  const propertyTax = calculatePropertyTaxForMultiUnit(units);\n  \n  // 지역자원시설세 계산\n  const resourceTax = calculateResourceTaxForMultiUnit(units);\n  \n  return {\n    propertyTax,\n    resourceTax,\n    totalTax: propertyTax + resourceTax\n  };\n}\n```\n\n5. 민원인 설명란에 지역자원시설세 계산 과정 표시 로직 구현\n```typescript\nfunction generateResourceTaxExplanation(units: Array<{standardPrice: number}>): string {\n  let explanation = '4. 지역자원시설세 계산\\n';\n  \n  // 각 구별 계산 과정 설명\n  units.forEach((unit, index) => {\n    const unitNumber = index + 1;\n    const taxBracket = RESOURCE_TAX_RATES.find(\n      bracket => unit.standardPrice > bracket.min && unit.standardPrice <= bracket.max\n    ) || RESOURCE_TAX_RATES[0];\n    \n    const calculatedTax = calculateResourceTaxForUnit(unit.standardPrice);\n    \n    explanation += `  ${unitNumber}구 과세표준 ${formatNumber(unit.standardPrice)}원 × ${taxBracket.rate * 100}% `;\n    if (taxBracket.deduction > 0) {\n      explanation += `- ${formatNumber(taxBracket.deduction)}원 `;\n    }\n    explanation += `= ${formatNumber(calculatedTax)}원\\n`;\n  });\n  \n  // 합계 표시\n  const totalTax = calculateResourceTaxForMultiUnit(units);\n  explanation += `  지역자원시설세 합계: ${formatNumber(totalTax)}원\\n`;\n  \n  return explanation;\n}\n```\n\n6. 민원인 설명란 컴포넌트에 지역자원시설세 설명 통합\n```typescript\nfunction updateTaxExplanation(units: Array<{standardPrice: number, isSpecialRate: boolean}>) {\n  // 재산세 설명 (Task 3에서 구현)\n  const propertyTaxExplanation = generateTaxCalculationExplanation(units);\n  \n  // 지역자원시설세 설명\n  const resourceTaxExplanation = generateResourceTaxExplanation(units);\n  \n  // 설명란에 표시\n  const explanationElement = document.getElementById('tax-explanation');\n  if (explanationElement) {\n    explanationElement.innerHTML = propertyTaxExplanation + '\\n' + resourceTaxExplanation;\n  }\n}\n```\n<info added on 2025-06-23T21:11:35.536Z>\n7. 지역자원시설세 세율 구간 수정 필요사항\n```typescript\n// 수정 필요: 지역자원시설세 세율 구간 정의\n// 현재 코드의 세율 구간이 잘못 설정되어 있음\n// 올바른 세율 구간은 다음과 같음:\nconst CORRECT_RESOURCE_TAX_RATES = [\n  { min: 0, max: 60000000, rate: 0.0004, deduction: 0 },\n  { min: 60000000, max: 150000000, rate: 0.0005, deduction: 6000 },\n  { min: 150000000, max: 300000000, rate: 0.0006, deduction: 21000 },\n  { min: 300000000, max: Infinity, rate: 0.0008, deduction: 81000 }\n];\n// 현재 코드의 rate 값이 실제보다 100배 작게 설정되어 있음 (0.00004 → 0.0004)\n```\n\n8. 민원인 설명란 개선 필요사항\n```typescript\n// ResultsDisplay.tsx 파일에서 지역자원시설세 설명 부분 개선 필요\n// 현재는 각 구별 계산 과정이 민원인 설명란에 명확히 표시되지 않음\n// generateResourceTaxExplanation 함수를 수정하여 각 구별 계산 과정과 \n// 세율 적용 구간을 명확히 표시하도록 개선 필요\n```\n</info added on 2025-06-23T21:11:35.536Z>\n<info added on 2025-06-23T21:13:57.942Z>\n7. 지역자원시설세 계산 로직 수정 완료\n```typescript\n// taxCalculations.ts - 수정된 지역자원시설세 세율 구간 정의\nconst RESOURCE_TAX_RATES = [\n  { min: 0, max: 60000000, rate: 0.0004, deduction: 0 },\n  { min: 60000000, max: 150000000, rate: 0.0005, deduction: 6000 },\n  { min: 150000000, max: 300000000, rate: 0.0006, deduction: 21000 },\n  { min: 300000000, max: Infinity, rate: 0.0008, deduction: 81000 }\n];\n\n// 개선된 구별 지역자원시설세 계산 함수\nfunction calculateRegionalResourceTax(standardPrice: number): {\n  tax: number;\n  rate: number;\n  bracket: typeof RESOURCE_TAX_RATES[0];\n} {\n  // 적절한 세율 구간 찾기\n  const taxBracket = RESOURCE_TAX_RATES.find(\n    bracket => standardPrice > bracket.min && standardPrice <= bracket.max\n  ) || RESOURCE_TAX_RATES[0];\n  \n  // 세액 계산 (과세표준 × 세율 - 누진공제액)\n  const calculatedTax = standardPrice * taxBracket.rate - taxBracket.deduction;\n  const tax = Math.floor(calculatedTax / 10) * 10; // 10원 단위 내림\n  \n  return {\n    tax: Math.max(tax, 0), // 음수가 나오지 않도록 보정\n    rate: taxBracket.rate,\n    bracket: taxBracket\n  };\n}\n\n// 개선된 다가구주택 전체 지역자원시설세 계산 함수\nfunction calculateMultiUnitRegionalResourceTax(units: Array<{standardPrice: number}>): {\n  totalTax: number;\n  unitCalculations: Array<{\n    standardPrice: number;\n    tax: number;\n    rate: number;\n    bracket: typeof RESOURCE_TAX_RATES[0];\n  }>;\n} {\n  const unitCalculations = units.map(unit => {\n    const calculation = calculateRegionalResourceTax(unit.standardPrice);\n    return {\n      standardPrice: unit.standardPrice,\n      ...calculation\n    };\n  });\n  \n  const totalTax = unitCalculations.reduce((sum, calc) => sum + calc.tax, 0);\n  \n  return {\n    totalTax,\n    unitCalculations\n  };\n}\n```\n\n8. 민원인 설명란 개선 완료\n```typescript\n// 개선된 지역자원시설세 설명 생성 함수\nfunction generateResourceTaxExplanation(units: Array<{standardPrice: number}>): string {\n  let explanation = '4. 지역자원시설세 계산\\n';\n  \n  const result = calculateMultiUnitRegionalResourceTax(units);\n  \n  // 각 구별 계산 과정 상세 설명\n  result.unitCalculations.forEach((calc, index) => {\n    const unitNumber = index + 1;\n    const ratePercent = calc.rate * 100;\n    \n    explanation += `  ${unitNumber}구 과세표준 ${formatNumber(calc.standardPrice)}원\\n`;\n    explanation += `  - 적용구간: ${formatNumber(calc.bracket.min)}원 초과 ~ ${calc.bracket.max < Infinity ? formatNumber(calc.bracket.max) + '원 이하' : '초과'}\\n`;\n    explanation += `  - 세율: ${ratePercent.toFixed(2)}%\\n`;\n    explanation += `  - 계산: ${formatNumber(calc.standardPrice)}원 × ${ratePercent.toFixed(2)}%`;\n    \n    if (calc.bracket.deduction > 0) {\n      explanation += ` - ${formatNumber(calc.bracket.deduction)}원(누진공제)`;\n    }\n    \n    explanation += ` = ${formatNumber(calc.tax)}원\\n\\n`;\n  });\n  \n  // 합계 표시\n  explanation += `  지역자원시설세 합계: ${formatNumber(result.totalTax)}원\\n`;\n  \n  return explanation;\n}\n```\n\n9. 테스트 및 검증 사항\n- TypeScript 컴파일 오류 해결 완료\n- 빌드 성공 확인\n- 다음 단계: 실제 테스트 케이스로 계산 결과 검증 및 민원인 설명란 표시 확인 필요\n</info added on 2025-06-23T21:13:57.942Z>",
-        "testStrategy": "1. 지역자원시설세 세율 구간별 계산 정확성 테스트\n   - 각 세율 구간(6천만원 이하, 6천만원 초과 1.5억원 이하, 1.5억원 초과 3억원 이하, 3억원 초과)에 대한 단위 테스트\n   - 경계값 테스트 (59,999,999원, 60,000,000원, 60,000,001원 등)\n\n2. 다가구주택 구별 지역자원시설세 계산 테스트\n   - 다양한 구성의 다가구주택 케이스 테스트 (1~5구)\n   - 각 구별 과세표준이 다른 세율 구간에 속하는 경우 테스트\n\n3. PRD 예시 데이터 기반 통합 테스트\n   - 주택공시가격: 568,000,000원\n   - 1구 과세표준: 94,205,773원\n   - 2구 과세표준: 75,924,332원\n   - 3구 과세표준: 75,924,332원\n   - 예상 지역자원시설세 결과 검증\n\n4. 민원인 설명란 표시 테스트\n   - 지역자원시설세 계산 과정이 명확하게 표시되는지 확인\n   - 각 구별 계산 과정과 합계가 정확히 표시되는지 검증\n   - 숫자 포맷팅 정확성 테스트 (천 단위 콤마, 원 단위 등)\n\n5. UI 통합 테스트\n   - 재산세와 지역자원시설세가 함께 올바르게 계산되는지 확인\n   - 민원인 설명란에 두 세금의 계산 과정이 모두 표시되는지 확인\n   - 다양한 화면 크기에서의 표시 테스트\n\n6. 반올림/내림 처리 정확성 테스트\n   - 지역자원시설세 계산 시 10원 단위 절사 처리 검증\n   - 최종 세액 합산 시 정확성 검증\n\n7. 회귀 테스트\n   - 기존 재산세 계산 기능이 정상 작동하는지 확인\n   - 일반 주택 계산 기능과의 호환성 테스트",
-        "status": "done",
-        "dependencies": [
-          2,
-          3
-        ],
-        "priority": "high",
-        "subtasks": []
-      },
-      {
         "id": 7,
-        "title": "지역자원시설세 계산 로직 검증 및 개선",
-        "description": "다가구주택 지역자원시설세 계산 로직을 검토하고, 각 구별 과세표준에 맞는 세율이 정확히 적용되는지 확인하며, 민원인 설명란에 계산 과정이 명확히 표시되도록 개선합니다.",
-        "details": "1. 기존 구현된 지역자원시설세 계산 로직 검토\n   - Task 6에서 구현된 지역자원시설세 계산 함수 검증\n   - 각 구별 과세표준에 맞는 세율 적용 정확성 확인\n   - 경계값 케이스 처리 검증 (세율 구간 경계값)\n\n2. 계산 로직 개선 (필요 시)\n   ```typescript\n   // 개선된 지역자원시설세 계산 함수\n   function calculateResourceTaxForUnit(standardPrice: number): number {\n     // 적절한 세율 구간 찾기\n     const bracket = RESOURCE_TAX_RATES.find(\n       rate => standardPrice > rate.min && standardPrice <= rate.max\n     );\n     \n     // 세액 계산 (과세표준 × 세율 - 누진공제액)\n     return Math.floor(standardPrice * bracket.rate - bracket.deduction);\n   }\n   ```\n\n3. 민원인 설명란 계산 과정 표시 개선\n   - 각 구별 지역자원시설세 계산 과정을 명확하게 표시\n   - 세율 구간, 적용 세율, 누진공제액 정보 포함\n   - 최종 합산 과정 표시\n\n   ```typescript\n   // 지역자원시설세 계산 과정 설명 함수\n   function generateResourceTaxExplanation(units: Array<{standardPrice: number, calculatedResourceTax: number}>): string {\n     let explanation = '4. 지역자원시설세 계산\\n';\n     \n     // 각 구별 계산 과정 설명\n     units.forEach((unit, index) => {\n       const unitNumber = index + 1;\n       const bracket = RESOURCE_TAX_RATES.find(\n         rate => unit.standardPrice > rate.min && unit.standardPrice <= rate.max\n       );\n       \n       explanation += `  ${unitNumber}구: ${formatNumber(unit.standardPrice)}원 × ${bracket.rate * 100}% - ${formatNumber(bracket.deduction)}원 = ${formatNumber(unit.calculatedResourceTax)}원\\n`;\n     });\n     \n     // 합계 표시\n     const totalResourceTax = units.reduce((sum, unit) => sum + unit.calculatedResourceTax, 0);\n     explanation += `  합계: ${formatNumber(totalResourceTax)}원\\n`;\n     \n     return explanation;\n   }\n   ```\n\n4. PRD 예시 데이터 기반 검증\n   - 주택공시가격: 568,000,000원\n   - 1구 과세표준: 94,205,773원\n   - 2구 과세표준: 75,924,332원\n   - 3구 과세표준: 75,924,332원\n   - 예상 지역자원시설세 계산 및 검증\n\n5. 통합 테스트\n   - 재산세 계산 로직과 지역자원시설세 계산 로직의 통합 검증\n   - 다양한 다가구주택 구성에 대한 종합 테스트\n<info added on 2025-06-23T21:18:47.777Z>\n6. 지역자원시설세 계산 검토 결과\n   - 예시 데이터 테스트:\n     - 1구 과세표준: 2,494,377원 → 990원 (10원 내림 적용)\n     - 2구 과세표준: 2,058,003원 → 820원 (10원 내림 적용)  \n     - 3구 과세표준: 2,058,003원 → 820원 (10원 내림 적용)\n     - 총 계산 결과: 2,630원\n     - 예시 예상 결과: 2,640원\n     - 차이: 10원\n   - 현재 계산 로직은 올바르게 각 구별 과세표준에 0.04% 세율을 적용하고 있음\n   - 차이는 반올림/내림 방식의 차이로 발생\n\n7. 후속 조치 사항\n   - 실제 계산기에서 사용하는 반올림 규칙 확인\n   - 민원인 설명란 표시 방식 검토\n   - 필요시 반올림 방식 조정\n   ```typescript\n   // 반올림 규칙 확인 및 조정 필요\n   function calculateResourceTaxForUnit(standardPrice: number): number {\n     const bracket = RESOURCE_TAX_RATES.find(\n       rate => standardPrice > rate.min && standardPrice <= rate.max\n     );\n     \n     // 현재: 10원 단위 내림 처리\n     return Math.floor((standardPrice * bracket.rate - bracket.deduction) / 10) * 10;\n     \n     // 대안: 10원 단위 반올림 처리\n     // return Math.round((standardPrice * bracket.rate - bracket.deduction) / 10) * 10;\n   }\n   ```\n</info added on 2025-06-23T21:18:47.777Z>\n<info added on 2025-06-23T21:22:06.672Z>\n8. 지역자원시설세 계산 개선 작업 완료\n   - 반올림 방식 개선\n     - 기존: 각 구별 10원 단위 내림 후 합산 → 2,630원\n     - 개선: 각 구별 계산 후 전체 합을 10원 단위 내림 → 2,640원 (예시와 일치)\n\n   - calculateMultiUnitRegionalResourceTax 함수 수정\n     ```typescript\n     function calculateMultiUnitRegionalResourceTax(units: Array<{standardPrice: number}>): number {\n       // 각 구별 세액 계산 (내림 처리 없이)\n       const taxPerUnit = units.map(unit => {\n         const bracket = RESOURCE_TAX_RATES.find(\n           rate => unit.standardPrice > rate.min && unit.standardPrice <= rate.max\n         );\n         return unit.standardPrice * bracket.rate - bracket.deduction;\n       });\n       \n       // 합산 후 10원 단위 내림 처리\n       const totalTaxBeforeRounding = taxPerUnit.reduce((sum, tax) => sum + tax, 0);\n       return Math.floor(totalTaxBeforeRounding / 10) * 10;\n     }\n     ```\n\n   - 민원인 설명란 번호 매김 개선\n     - 감면 적용 여부에 따라 동적 번호 할당\n     - stepNumber 변수로 순차적 번호 관리\n     ```typescript\n     function generateResourceTaxExplanation(units: Array<{standardPrice: number}>, stepNumber: number): string {\n       let explanation = `${stepNumber}. 지역자원시설세 계산\\n`;\n       \n       // 각 구별 계산 과정 설명\n       // ...\n     }\n     ```\n\n   - 테스트 결과\n     - 예시 데이터로 정확히 2,640원 계산 확인\n     - 각 구별 세율(0.04%) 올바르게 적용\n     - TypeScript 빌드 성공\n     - 민원인 설명란에 계산 과정 상세 표시\n</info added on 2025-06-23T21:22:06.672Z>",
-        "testStrategy": "1. 지역자원시설세 세율 구간별 계산 정확성 테스트\n   - 각 세율 구간(6천만원 이하, 6천만원 초과 1.5억원 이하, 1.5억원 초과 3억원 이하, 3억원 초과)에 대한 단위 테스트\n   - 경계값 테스트 (59,999,999원, 60,000,000원, 60,000,001원 등)\n\n2. 다가구주택 구별 지역자원시설세 계산 테스트\n   - 다양한 구성의 다가구주택 케이스 테스트 (1~5구)\n   - 각 구별 과세표준이 다른 세율 구간에 속하는 경우 테스트\n\n3. 민원인 설명란 표시 테스트\n   - 계산 과정이 명확하게 표시되는지 확인\n   - 세율, 누진공제액, 계산 결과가 정확히 표시되는지 검증\n   - 다양한 케이스에서 설명 텍스트 포맷 일관성 확인\n\n4. PRD 예시 데이터 기반 통합 테스트\n   - 주택공시가격: 568,000,000원\n   - 1구 과세표준: 94,205,773원\n   - 2구 과세표준: 75,924,332원\n   - 3구 과세표준: 75,924,332원\n   - 예상 결과와 실제 계산 결과 비교\n\n5. 재산세 계산과의 통합 테스트\n   - 재산세와 지역자원시설세 계산이 함께 정확히 작동하는지 확인\n   - 최종 세액 합계가 정확한지 검증\n\n6. UI 표시 테스트\n   - 계산된 지역자원시설세가 UI에 정확히 표시되는지 확인\n   - 민원인 설명란의 계산 과정이 가독성 있게 표시되는지 확인",
-        "status": "done",
+        "title": "종합 테스트 및 디버깅",
+        "description": "구현된 전체 로직에 대한 종합 테스트를 수행하고 발견된 문제점을 수정합니다.",
+        "details": "1. PRD 예시 시나리오 기반 테스트 케이스 작성 및 실행\n2. 다양한 입력값 조합에 대한 테스트 케이스 작성 및 실행\n   - 다양한 주택공시가격 범위\n   - 다양한 과세표준 범위\n   - 다양한 전년도 세액 및 세부담상한율 조합\n   - 다른 감면 유형과의 조합\n3. 발견된 버그 수정\n4. 성능 최적화 (필요시)\n5. 코드 리팩토링 및 정리",
+        "testStrategy": "통합 테스트 및 E2E 테스트를 통한 전체 기능 검증. 실제 사용자 시나리오를 시뮬레이션하여 사용성 테스트. 성능 테스트(대량의 계산 요청 처리 등).",
+        "priority": "medium",
         "dependencies": [
-          6,
-          3
+          5,
+          6
         ],
-        "priority": "high",
+        "status": "pending",
         "subtasks": []
       },
       {
         "id": 8,
-        "title": "지역자원시설세 세율 구간 세분화 및 누진공제 적용",
-        "description": "지역자원시설세 세율 구간을 6개 구간(600만원 이하, 600-1300만원, 1300-2600만원, 2600-3900만원, 3900-6400만원, 6400만원 초과)으로 세분화하고 각 구간별 세율과 누진공제를 적용합니다.",
-        "details": "1. 기존 지역자원시설세 세율 구간 코드를 새로운 6개 구간으로 수정\n\n```typescript\n// 기존 지역자원시설세 세율 구간 정의\nconst RESOURCE_TAX_RATES = [\n  { min: 0, max: 60000000, rate: 0.00004, deduction: 0 },\n  { min: 60000000, max: 150000000, rate: 0.00005, deduction: 6000 },\n  { min: 150000000, max: 300000000, rate: 0.00006, deduction: 21000 },\n  { min: 300000000, max: Infinity, rate: 0.00008, deduction: 81000 }\n];\n\n// 새로운 지역자원시설세 세율 구간 정의 (6개 구간)\nconst RESOURCE_TAX_RATES = [\n  { min: 0, max: 6000000, rate: 0.00004, deduction: 0 },\n  { min: 6000000, max: 13000000, rate: 0.00005, deduction: 600 },\n  { min: 13000000, max: 26000000, rate: 0.00006, deduction: 1900 },\n  { min: 26000000, max: 39000000, rate: 0.00008, deduction: 7100 },\n  { min: 39000000, max: 64000000, rate: 0.00010, deduction: 14900 },\n  { min: 64000000, max: Infinity, rate: 0.00012, deduction: 27700 }\n];\n```\n\n2. 지역자원시설세 계산 함수 업데이트\n```typescript\n// 지역자원시설세 계산 함수 업데이트\nfunction calculateResourceTaxForUnit(standardPrice: number): number {\n  // 적절한 세율 구간 찾기\n  const bracket = RESOURCE_TAX_RATES.find(\n    rate => standardPrice > rate.min && standardPrice <= rate.max\n  ) || RESOURCE_TAX_RATES[0]; // 기본값 설정\n  \n  // 세액 계산 (과세표준 × 세율 - 누진공제액)\n  return Math.floor(standardPrice * bracket.rate - bracket.deduction);\n}\n```\n\n3. 민원인 설명란에 표시될 계산 과정 설명 함수 업데이트\n```typescript\nfunction generateResourceTaxExplanation(standardPrice: number): string {\n  const bracket = RESOURCE_TAX_RATES.find(\n    rate => standardPrice > rate.min && standardPrice <= rate.max\n  ) || RESOURCE_TAX_RATES[0];\n  \n  const calculatedTax = Math.floor(standardPrice * bracket.rate - bracket.deduction);\n  \n  return `지역자원시설세 계산: ${formatNumber(standardPrice)}원 × ${bracket.rate * 100}% - ${formatNumber(bracket.deduction)}원(누진공제) = ${formatNumber(calculatedTax)}원`;\n}\n```\n\n4. 다가구주택 각 구별 지역자원시설세 계산 로직 업데이트\n```typescript\nfunction calculateResourceTaxForMultiUnit(units: Array<{standardPrice: number}>): number {\n  // 각 구별 지역자원시설세 계산 및 합산\n  return units.reduce((total, unit) => {\n    return total + calculateResourceTaxForUnit(unit.standardPrice);\n  }, 0);\n}\n```\n\n5. 경계값 처리 로직 보완\n```typescript\n// 경계값 처리를 위한 보조 함수\nfunction findTaxBracket(standardPrice: number) {\n  // 정확히 경계값인 경우 처리\n  const exactMatch = RESOURCE_TAX_RATES.find(rate => standardPrice === rate.max);\n  if (exactMatch) {\n    return exactMatch;\n  }\n  \n  // 범위 내 값 찾기\n  return RESOURCE_TAX_RATES.find(\n    rate => standardPrice > rate.min && standardPrice <= rate.max\n  ) || RESOURCE_TAX_RATES[0];\n}\n```\n<info added on 2025-06-23T21:41:30.303Z>\n## 주요 변경 사항\n\n### 1. 세율 구간을 6개로 세분화:\n- **기존**: 4개 구간 (6천만원, 1.5억원, 3억원 기준)\n- **새로운**: 6개 구간 (6백만원, 1,300만원, 2,600만원, 3,900만원, 6,400만원 기준)\n\n### 2. 새로운 세율 구간 및 누진공제:\n1. 6백만원 이하: 0.04% (누진공제 없음)\n2. 6백만원 초과 ~ 1,300만원 이하: 0.05% - 600원\n3. 1,300만원 초과 ~ 2,600만원 이하: 0.06% - 1,900원  \n4. 2,600만원 초과 ~ 3,900만원 이하: 0.08% - 7,100원\n5. 3,900만원 초과 ~ 6,400만원 이하: 0.1% - 14,900원\n6. 6,400만원 초과: 0.12% - 27,700원\n\n### 3. 수정된 함수:\n- `calculateRegionalResourceTax`: 단일 지역자원시설세 계산\n- `calculateMultiUnitRegionalResourceTax`: 다가구주택 지역자원시설세 계산\n\n### 4. 예시 데이터 검증 결과:\n- 1구 (2,494,377원): 997.75원 → 6백만원 이하 구간 적용\n- 2구 (2,058,003원): 823.20원 → 6백만원 이하 구간 적용  \n- 3구 (2,058,003원): 823.20원 → 6백만원 이하 구간 적용\n- **총 계산 결과**: 2,640원 ✅ (예시와 정확히 일치)\n\n### 5. 기술적 구현:\n- TypeScript 빌드 성공 확인\n- 기존 10원 단위 내림 로직 유지\n- 음수 방지 로직 유지\n- 민원인 설명란 표시는 기존 로직 그대로 유지\n\n예시 요구사항에 완벽히 부합하는 세율 구간으로 개선 완료.\n</info added on 2025-06-23T21:41:30.303Z>",
-        "testStrategy": "1. 새로운 세율 구간별 계산 정확성 테스트\n   - 각 세율 구간(600만원 이하, 600-1300만원, 1300-2600만원, 2600-3900만원, 3900-6400만원, 6400만원 초과)에 대한 단위 테스트 작성\n   - 테스트 케이스 예시:\n     * 500만원: 500만원 × 0.04% = 2,000원\n     * 1,000만원: 1,000만원 × 0.05% - 600원 = 4,400원\n     * 2,000만원: 2,000만원 × 0.06% - 1,900원 = 10,100원\n     * 3,000만원: 3,000만원 × 0.08% - 7,100원 = 16,900원\n     * 5,000만원: 5,000만원 × 0.10% - 14,900원 = 35,100원\n     * 7,000만원: 7,000만원 × 0.12% - 27,700원 = 56,300원\n\n2. 경계값 테스트\n   - 각 구간의 경계값에서 정확한 계산이 이루어지는지 확인\n   - 테스트 케이스:\n     * 5,999,999원, 6,000,000원, 6,000,001원\n     * 12,999,999원, 13,000,000원, 13,000,001원\n     * 25,999,999원, 26,000,000원, 26,000,001원\n     * 38,999,999원, 39,000,000원, 39,000,001원\n     * 63,999,999원, 64,000,000원, 64,000,001원\n\n3. 다가구주택 통합 테스트\n   - 다양한 구성의 다가구주택에서 각 구별 과세표준에 따른 지역자원시설세 계산 테스트\n   - 각 구별 과세표준이 서로 다른 세율 구간에 속하는 경우 테스트\n   - 예시 테스트 케이스:\n     * 3구 다가구: 500만원, 1,000만원, 3,000만원 과세표준\n     * 4구 다가구: 600만원, 1,300만원, 2,600만원, 6,400만원 과세표준\n\n4. 민원인 설명란 표시 테스트\n   - 계산 과정이 명확하게 표시되는지 확인\n   - 각 세율 구간별 설명 문구가 정확한지 검증\n   - 누진공제액이 올바르게 표시되는지 확인\n\n5. 회귀 테스트\n   - 기존 기능이 새로운 세율 구간 적용 후에도 정상 작동하는지 확인\n   - 다른 세금 계산 로직에 영향이 없는지 확인\n\n6. 성능 테스트\n   - 다수의 구를 가진 다가구주택 계산 시 성능 저하가 없는지 확인",
-        "status": "done",
+        "title": "문서화 및 배포 준비",
+        "description": "구현된 기능에 대한 문서화 작업을 수행하고 배포를 준비합니다.",
+        "details": "1. 코드 주석 추가 및 정리\n2. README 업데이트\n   - 새로운 전세사기 감면 계산 로직 설명\n   - 계산 예시 추가\n   - 사용 방법 안내\n3. 변경 로그 작성\n4. API 문서 업데이트 (필요시)\n5. 배포 스크립트 준비\n6. 테스트 환경에서 최종 검증\n7. 배포 계획 수립",
+        "testStrategy": "문서 리뷰를 통한 정확성 및 완전성 검증. 배포 전 체크리스트를 통한 준비 상태 확인. 테스트 환경에서의 최종 기능 검증.",
+        "priority": "low",
         "dependencies": [
-          6,
           7
         ],
-        "priority": "high",
+        "status": "pending",
         "subtasks": []
       },
       {
         "id": 9,
-        "title": "민원인 설명란의 지역자원시설세 계산 과정 표시 개선",
-        "description": "다가구주택 선택 시 민원인 설명란에 지역자원시설세 계산 과정을 개선하여 각 구별 과세표준, 적용 세율, 계산 공식을 상세히 표시합니다.",
-        "details": "1. 민원인 설명란의 지역자원시설세 계산 과정 표시 컴포넌트 식별 및 분석\n   - 기존 지역자원시설세 설명 부분 코드 검토\n   - 다가구주택 선택 시 구별 계산 과정 표시를 위한 요구사항 분석\n\n2. 다가구주택 각 구별 지역자원시설세 계산 과정 표시 로직 구현\n```typescript\n// 지역자원시설세 계산 과정 설명 생성 함수\nfunction generateResourceTaxExplanation(units: Array<{standardPrice: number, calculatedResourceTax: number}>, totalResourceTax: number): string {\n  let explanation = '4. 지역자원시설세 계산\\n';\n  \n  // 각 구별 계산 과정 설명\n  units.forEach((unit, index) => {\n    const unitNumber = index + 1;\n    const taxBracket = RESOURCE_TAX_RATES.find(\n      rate => unit.standardPrice > rate.min && unit.standardPrice <= rate.max\n    );\n    \n    explanation += `  ${unitNumber}구 과세표준 ${formatNumber(unit.standardPrice)}원 × ${(taxBracket.rate * 100).toFixed(3)}%`;\n    \n    // 누진공제액이 있는 경우 표시\n    if (taxBracket.deduction > 0) {\n      explanation += ` - ${formatNumber(taxBracket.deduction)}원`;\n    }\n    \n    explanation += ` = ${formatNumber(unit.calculatedResourceTax)}원\\n`;\n  });\n  \n  // 최종 합계 표시\n  explanation += `  지역자원시설세 합계: ${formatNumber(totalResourceTax)}원\\n`;\n  \n  return explanation;\n}\n```\n\n3. 세율 구간 및 누진공제액 표시 개선\n   - Task 8에서 구현된 6개 세율 구간(600만원 이하, 600-1300만원, 1300-2600만원, 2600-3900만원, 3900-6400만원, 6400만원 초과)에 맞게 표시 로직 구현\n   - 각 구간별 세율과 누진공제액을 명확히 표시\n\n4. 계산 과정 포맷팅 개선\n```typescript\n// 숫자 포맷팅 함수\nfunction formatNumber(num: number): string {\n  return num.toLocaleString('ko-KR');\n}\n\n// 세율 표시 함수\nfunction formatRate(rate: number): string {\n  return (rate * 100).toFixed(3) + '%';\n}\n```\n\n5. 민원인 설명란 컴포넌트에 개선된 지역자원시설세 계산 과정 통합\n```typescript\n// 민원인 설명란 컴포넌트 업데이트\nfunction TaxExplanationComponent({ taxData }) {\n  // 기존 설명 텍스트 생성\n  const propertyTaxExplanation = generatePropertyTaxExplanation(taxData.units, taxData.totalPropertyTax);\n  \n  // 지역자원시설세 설명 텍스트 생성\n  const resourceTaxExplanation = generateResourceTaxExplanation(taxData.units, taxData.totalResourceTax);\n  \n  // 전체 설명 텍스트 조합\n  const fullExplanation = `\n    1. 주택공시가격: ${formatNumber(taxData.totalPublicPrice)}원\n    2. 과세표준: ${formatNumber(taxData.totalStandardPrice)}원\n    ${propertyTaxExplanation}\n    ${resourceTaxExplanation}\n    5. 총 세액: ${formatNumber(taxData.totalTax)}원\n  `;\n  \n  return <pre className=\"tax-explanation\">{fullExplanation}</pre>;\n}\n```\n\n6. 예시와 동일한 형태로 표기하기 위한 스타일링 적용\n   - 들여쓰기, 줄바꿈, 폰트 스타일 등 가독성 향상을 위한 CSS 적용\n   - 숫자 포맷팅(천 단위 콤마) 일관성 유지",
-        "testStrategy": "1. 지역자원시설세 계산 과정 표시 정확성 테스트\n   - 각 세율 구간에 해당하는 다양한 과세표준 값으로 테스트\n   - 세율 구간별 누진공제액이 올바르게 표시되는지 확인\n   - 계산 결과가 정확히 표시되는지 검증\n\n2. 다가구주택 구별 지역자원시설세 계산 과정 표시 테스트\n   - 다양한 구성의 다가구주택 케이스 테스트 (1~5구)\n   - 각 구별 과세표준이 다른 세율 구간에 속하는 경우 테스트\n   - 모든 구의 계산 과정이 명확히 표시되는지 확인\n\n3. 숫자 포맷팅 테스트\n   - 천 단위 콤마가 올바르게 적용되는지 확인\n   - 세율 표시 형식이 일관되게 적용되는지 확인 (소수점 3자리까지)\n\n4. 예시 데이터 기반 출력 검증\n   - PRD에 제시된 예시 데이터로 생성된 설명 텍스트 검증\n   - 예상 출력 형식과 일치하는지 비교\n\n5. UI 렌더링 테스트\n   - 텍스트 줄바꿈, 들여쓰기 등 가독성 확인\n   - 다양한 화면 크기에서의 표시 테스트\n   - 긴 텍스트가 올바르게 표시되는지 확인\n\n6. 통합 테스트\n   - 재산세 본세 계산 설명과 함께 전체 민원인 설명란이 올바르게 표시되는지 확인\n   - 다가구주택 선택/미선택 시 표시 차이 검증\n   - 특례세율 적용/미적용 시 표시 차이 검증",
+        "title": "전세사기 감면 계산 과정 표시 형식 수정",
+        "description": "calculateFraudLeaseReduction 함수의 계산 과정 표시 형식을 사용자 예시와 정확히 일치하도록 수정합니다.",
         "status": "done",
         "dependencies": [
-          6,
-          7,
-          8
+          5
         ],
-        "priority": "high",
+        "priority": "medium",
+        "details": "1. calculateFraudLeaseReduction 함수의 출력 형식을 수정:\n   - Step 번호와 순서를 사용자 예시와 일치시킴\n   - Step1과 Step2의 순서 교정 (Step1=표준세율+감면, Step2=특례세율)\n   - 각 단계별 계산 과정 설명을 사용자 요구사항에 맞게 수정\n   - 표시 형식 간소화: step1, step2, step3, step4, step5로 소문자로 통일\n   - 불필요한 세율 정보 제거: 복잡한 세율 설명 대신 간단한 '전세사기 감면 계산' 헤더로 변경\n   - 기본 세액 표시: 사용자 예시에 맞춰 특례세율 기준으로 표시\n\n2. 계산 과정 표시 형식 수정:\n```typescript\nfunction calculateFraudLeaseReduction(propertyData, standardTaxAmount, previousYearTax) {\n  const taxBase = propertyData.taxBase;\n  const standardRate = getStandardRate(taxBase);\n  const specialRate = getSpecialRate(taxBase);\n  \n  // step1: 과세표준 × 표준세율 × 전세사기 감면율 계산\n  const standardRateAmount = taxBase * (standardRate / 100);\n  const standardRateWithReduction = standardRateAmount * 0.5;\n  \n  // step2: 과세표준 × 1세대 1주택자 특례세율 계산\n  const specialRateAmount = taxBase * (specialRate / 100);\n  \n  // step3: step1과 step2 중 적은 값 선택\n  const lowerTaxAmount = Math.min(standardRateWithReduction, specialRateAmount);\n  \n  // step4: 세부담상한제 적용\n  const taxLimitAmount = previousYearTax * (1 + propertyData.taxLimitRate / 100);\n  \n  // step5: step3과 step4 중 적은 값 선택\n  const finalAmount = Math.min(lowerTaxAmount, taxLimitAmount);\n  \n  return {\n    finalAmount,\n    details: {\n      step1: {\n        title: \"과세표준 × 표준세율 × 전세사기 감면율\",\n        calculation: `${taxBase.toLocaleString()}원 × ${standardRate}% × 50% = ${standardRateWithReduction.toLocaleString()}원`,\n        amount: standardRateWithReduction\n      },\n      step2: {\n        title: \"과세표준 × 1세대 1주택자 특례세율\",\n        calculation: `${taxBase.toLocaleString()}원 × ${specialRate}% = ${specialRateAmount.toLocaleString()}원`,\n        amount: specialRateAmount\n      },\n      step3: {\n        title: \"step1과 step2 중 적은 값 선택\",\n        calculation: `${standardRateWithReduction.toLocaleString()}원 vs ${specialRateAmount.toLocaleString()}원 = ${lowerTaxAmount.toLocaleString()}원`,\n        amount: lowerTaxAmount,\n        selected: standardRateWithReduction <= specialRateAmount ? \"표준세율+감면\" : \"특례세율\"\n      },\n      step4: {\n        title: \"세부담상한제 적용\",\n        calculation: `전년도 세액 ${previousYearTax.toLocaleString()}원 × (1 + ${propertyData.taxLimitRate}%) = ${taxLimitAmount.toLocaleString()}원`,\n        amount: taxLimitAmount\n      },\n      step5: {\n        title: \"step3과 step4 중 적은 값 선택\",\n        calculation: `${lowerTaxAmount.toLocaleString()}원 vs ${taxLimitAmount.toLocaleString()}원 = ${finalAmount.toLocaleString()}원`,\n        amount: finalAmount,\n        selected: lowerTaxAmount <= taxLimitAmount ? \"감면세액\" : \"세부담상한액\"\n      }\n    }\n  };\n}\n```\n\n3. 결과 표시 컴포넌트 수정:\n```typescript\nfunction renderCalculationDetails(details) {\n  return (\n    <div className=\"calculation-steps\">\n      <h3>전세사기 감면 계산</h3>\n      \n      <div className=\"step\">\n        <h4>step1: {details.step1.title}</h4>\n        <p>{details.step1.calculation}</p>\n      </div>\n      \n      <div className=\"step\">\n        <h4>step2: {details.step2.title}</h4>\n        <p>{details.step2.calculation}</p>\n      </div>\n      \n      <div className=\"step\">\n        <h4>step3: {details.step3.title}</h4>\n        <p>{details.step3.calculation}</p>\n        <p>선택: {details.step3.selected}</p>\n      </div>\n      \n      <div className=\"step\">\n        <h4>step4: {details.step4.title}</h4>\n        <p>{details.step4.calculation}</p>\n      </div>\n      \n      <div className=\"step\">\n        <h4>step5: {details.step5.title}</h4>\n        <p>{details.step5.calculation}</p>\n        <p>선택: {details.step5.selected}</p>\n      </div>\n    </div>\n  );\n}\n```\n\n4. 사용자 예시와 정확히 일치하는지 확인:\n   - step1: 과세표준 × 표준세율 × 전세사기 감면율 = 41,430원\n   - step2: 과세표준 × 1세대 1주택자 특례세율 = 45,250원  \n   - step3: step1과 step2 중 적은 값 선택 = 41,430원\n   - step4: 세부담상한제 적용 = 42,140원\n   - step5: step3과 step4 중 적은 값 선택 = 41,430원",
+        "testStrategy": "1. 단위 테스트 작성:\n   - 수정된 calculateFraudLeaseReduction 함수가 올바른 계산 과정과 결과를 반환하는지 검증\n   - 다양한 입력값에 대해 예상된 출력 형식이 정확히 나오는지 확인\n   - 각 단계별 계산 결과가 정확한지 검증\n\n2. 통합 테스트:\n   - 실제 UI에서 계산 과정이 사용자 예시와 동일하게 표시되는지 확인\n   - 다양한 시나리오에서 각 단계별 표시가 올바르게 작동하는지 검증\n     - 표준세율+감면이 유리한 경우\n     - 특례세율이 유리한 경우\n     - 세부담상한제가 적용되는 경우\n\n3. 사용자 예시와의 일치성 검증:\n   - 사용자가 제공한 예시 데이터를 입력하여 정확히 동일한 결과가 나오는지 확인\n   - Step 번호와 순서가 예시와 일치하는지 확인 (소문자 step 형식 확인)\n   - 계산식과 결과값이 예시와 동일한 형식으로 표시되는지 확인\n   - '전세사기 감면 계산' 헤더가 올바르게 표시되는지 확인\n\n4. 시각적 검증:\n   - 개발 환경에서 실제 렌더링된 결과를 스크린샷으로 캡처\n   - 사용자 요구사항과 비교하여 형식이 일치하는지 확인\n   - 필요시 디자인 팀과 협업하여 시각적 표현 검증\n\n5. 회귀 테스트:\n   - 기존 기능이 정상적으로 작동하는지 확인\n   - 다른 계산 로직에 영향을 주지 않는지 검증\n\n6. 개발 서버 테스트:\n   - 개발 서버에서 실제 테스트를 진행하여 모든 변경사항이 예상대로 작동하는지 확인",
         "subtasks": [
           {
             "id": 1,
-            "title": "단일 주택 지역자원시설세 세율 구간 정보 추가",
-            "description": "단일 주택에서도 다가구주택과 동일한 지역자원시설세 세율 구간 정보를 민원인 설명란에 표시",
-            "details": "<info added on 2025-06-23T21:57:35.535Z>\n단일 주택 지역자원시설세 세율 구간 정보를 성공적으로 추가했습니다. 주요 개선사항으로는 단일 주택에 \"6. 지역자원시설세 계산\" 섹션을 추가하여 과세표준, 계산 공식, 최종 금액을 상세히 표시하도록 했습니다. 새로운 6개 구간에 따른 간이세율 공식을 적용하고, 소유비율이 100% 미만인 경우 소유비율 적용 과정을 명확히 표시했습니다. 예시와 동일한 세율 구간 정보를 표시하여 사용자가 이해하기 쉽게 개선했습니다. 코드 빌드는 성공적으로 완료되었으며 TypeScript 오류가 없음을 확인했습니다.\n</info added on 2025-06-23T21:57:35.535Z>",
+            "title": "Step 순서 및 형식 수정",
+            "description": "사용자 예시에 맞춰 Step1=표준세율+감면, Step2=특례세율로 수정하고 step1, step2 등 소문자로 통일",
             "status": "done",
             "dependencies": [],
-            "parentTaskId": 9
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "계산 과정 표시 형식 간소화",
+            "description": "불필요한 세율 정보를 제거하고 '전세사기 감면 계산' 헤더로 변경",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "기본 세액 표시 방식 수정",
+            "description": "사용자 예시에 맞춰 특례세율 기준으로 표시",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "개발 서버 테스트",
+            "description": "수정된 코드를 개발 서버에 배포하고 실제 환경에서 테스트",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
           }
         ]
       },
       {
         "id": 10,
-        "title": "지역자원시설세 과세표준 분리 및 적용 구현",
-        "description": "재산세 과세표준과 분리된 지역자원시설세 과세표준을 구현하고, 다가구주택에서 각 구별 지역자원시설세 과세표준에 맞는 세율을 적용하는 기능을 개발합니다.",
-        "details": "1. 지역자원시설세 과세표준 분리 구현\n   - 기존 재산세 과세표준과 별도로 지역자원시설세 과세표준을 계산하는 로직 구현\n   - 과세표준 계산 관련 데이터 모델 수정\n```typescript\n// 기존 데이터 모델 확장\ninterface TaxCalculationUnit {\n  standardPrice: number;           // 재산세 과세표준\n  resourceTaxStandardPrice: number; // 지역자원시설세 과세표준\n  isSpecialRate: boolean;\n  calculatedTax: number;\n  calculatedResourceTax: number;\n}\n\n// 지역자원시설세 과세표준 계산 함수\nfunction calculateResourceTaxStandardPrice(publicPrice: number): number {\n  // 지역자원시설세 과세표준 계산 로직\n  // 필요시 재산세 과세표준과 다른 계산 방식 적용\n  return Math.floor(publicPrice * 0.7 * 0.6);\n}\n```\n\n2. 다가구주택 각 구별 지역자원시설세 과세표준 계산 로직 구현\n```typescript\n// 다가구주택 각 구별 지역자원시설세 과세표준 계산\nfunction calculateMultiUnitResourceTaxStandardPrices(\n  totalPublicPrice: number,\n  unitCount: number\n): number[] {\n  const totalResourceTaxStandardPrice = calculateResourceTaxStandardPrice(totalPublicPrice);\n  \n  // 각 구별 과세표준 계산 (균등 분배 또는 비율에 따른 분배)\n  return distributeStandardPrice(totalResourceTaxStandardPrice, unitCount);\n}\n```\n\n3. 각 구별 지역자원시설세 세율 적용 로직 구현\n```typescript\n// 각 구별 지역자원시설세 계산\nfunction calculateResourceTaxForUnits(units: TaxCalculationUnit[]): TaxCalculationUnit[] {\n  return units.map(unit => {\n    const resourceTaxBracket = RESOURCE_TAX_RATES.find(\n      rate => unit.resourceTaxStandardPrice > rate.min && unit.resourceTaxStandardPrice <= rate.max\n    );\n    \n    const calculatedResourceTax = Math.floor(\n      unit.resourceTaxStandardPrice * resourceTaxBracket.rate - resourceTaxBracket.deduction\n    );\n    \n    return {\n      ...unit,\n      calculatedResourceTax\n    };\n  });\n}\n```\n\n4. 지역자원시설세 계산 결과 통합 및 합산 로직 구현\n```typescript\n// 지역자원시설세 총액 계산\nfunction calculateTotalResourceTax(units: TaxCalculationUnit[]): number {\n  return units.reduce((total, unit) => total + unit.calculatedResourceTax, 0);\n}\n```\n\n5. 기존 재산세 계산 로직과의 통합\n```typescript\n// 통합 세금 계산 함수\nfunction calculateTaxes(\n  houseType: 'singleUnit' | 'multiUnit',\n  publicPrice: number,\n  unitCount: number = 1,\n  specialRateUnits: boolean[] = []\n): {\n  propertyTax: number,\n  resourceTax: number,\n  units: TaxCalculationUnit[]\n} {\n  let units: TaxCalculationUnit[] = [];\n  \n  if (houseType === 'multiUnit') {\n    // 다가구주택 처리\n    const standardPrices = distributeStandardPrice(\n      calculateStandardPrice(publicPrice),\n      unitCount\n    );\n    \n    const resourceTaxStandardPrices = distributeStandardPrice(\n      calculateResourceTaxStandardPrice(publicPrice),\n      unitCount\n    );\n    \n    // 각 구별 과세표준 및 세율 적용\n    units = standardPrices.map((standardPrice, index) => ({\n      standardPrice,\n      resourceTaxStandardPrice: resourceTaxStandardPrices[index],\n      isSpecialRate: specialRateUnits[index] || false,\n      calculatedTax: 0,\n      calculatedResourceTax: 0\n    }));\n    \n    // 재산세 계산\n    units = calculateTaxForUnits(units);\n    \n    // 지역자원시설세 계산\n    units = calculateResourceTaxForUnits(units);\n  } else {\n    // 일반주택 처리\n    // ...\n  }\n  \n  return {\n    propertyTax: calculateTotalTax(units),\n    resourceTax: calculateTotalResourceTax(units),\n    units\n  };\n}",
-        "testStrategy": "1. 지역자원시설세 과세표준 분리 계산 정확성 테스트\n   - 다양한 주택공시가격에 대한 지역자원시설세 과세표준 계산 검증\n   - 재산세 과세표준과 지역자원시설세 과세표준이 올바르게 분리되는지 확인\n   - 단위 테스트 작성:\n```typescript\ntest('지역자원시설세 과세표준 계산 정확성', () => {\n  // 테스트 케이스\n  const testCases = [\n    { publicPrice: 100000000, expectedStandardPrice: 42000000 },\n    { publicPrice: 500000000, expectedStandardPrice: 210000000 },\n    { publicPrice: 1000000000, expectedStandardPrice: 420000000 }\n  ];\n  \n  testCases.forEach(({ publicPrice, expectedStandardPrice }) => {\n    expect(calculateResourceTaxStandardPrice(publicPrice)).toBe(expectedStandardPrice);\n  });\n});\n```\n\n2. 다가구주택 구별 지역자원시설세 과세표준 분배 테스트\n   - 다양한 구성(1~5구)의 다가구주택에 대한 과세표준 분배 검증\n   - 분배된 과세표준 합계가 전체 과세표준과 일치하는지 확인\n```typescript\ntest('다가구주택 구별 지역자원시설세 과세표준 분배', () => {\n  const totalPublicPrice = 568000000;\n  const unitCount = 3;\n  \n  const standardPrices = calculateMultiUnitResourceTaxStandardPrices(totalPublicPrice, unitCount);\n  \n  // 분배된 과세표준 개수 확인\n  expect(standardPrices.length).toBe(unitCount);\n  \n  // 분배된 과세표준 합계 확인\n  const totalStandardPrice = standardPrices.reduce((sum, price) => sum + price, 0);\n  expect(totalStandardPrice).toBe(calculateResourceTaxStandardPrice(totalPublicPrice));\n});\n```\n\n3. 각 구별 지역자원시설세 세율 적용 정확성 테스트\n   - 각 세율 구간에 해당하는 과세표준 값으로 테스트\n   - 세율 구간 경계값 테스트 (599만원, 600만원, 601만원 등)\n   - 누진공제액이 올바르게 적용되는지 확인\n```typescript\ntest('구별 지역자원시설세 세율 적용 정확성', () => {\n  const testUnits = [\n    { resourceTaxStandardPrice: 5000000, expectedTax: 2000 },   // 0.04% 구간\n    { resourceTaxStandardPrice: 10000000, expectedTax: 4400 },  // 0.05% 구간, 누진공제 600원\n    { resourceTaxStandardPrice: 20000000, expectedTax: 10100 }, // 0.06% 구간, 누진공제 1,900원\n    { resourceTaxStandardPrice: 40000000, expectedTax: 24100 }  // 0.08% 구간, 누진공제 7,900원\n  ];\n  \n  const units = testUnits.map(unit => ({\n    standardPrice: unit.resourceTaxStandardPrice,\n    resourceTaxStandardPrice: unit.resourceTaxStandardPrice,\n    isSpecialRate: false,\n    calculatedTax: 0,\n    calculatedResourceTax: 0\n  }));\n  \n  const calculatedUnits = calculateResourceTaxForUnits(units);\n  \n  calculatedUnits.forEach((unit, index) => {\n    expect(unit.calculatedResourceTax).toBe(testUnits[index].expectedTax);\n  });\n});\n```\n\n4. PRD 예시 데이터 기반 통합 테스트\n   - 주택공시가격: 568,000,000원, 3구 다가구주택 케이스 테스트\n   - 각 구별 지역자원시설세 계산 결과 검증\n   - 총 지역자원시설세 합계 검증\n```typescript\ntest('PRD 예시 데이터 기반 지역자원시설세 계산', () => {\n  const result = calculateTaxes(\n    'multiUnit',\n    568000000,\n    3,\n    [true, true, true]\n  );\n  \n  // 각 구별 지역자원시설세 검증\n  // 예상 결과값은 실제 계산 결과에 따라 조정 필요\n  expect(result.resourceTax).toBeGreaterThan(0);\n  expect(result.units.length).toBe(3);\n  expect(result.units.every(unit => unit.calculatedResourceTax > 0)).toBe(true);\n});\n```\n\n5. 기존 재산세 계산 로직과의 호환성 테스트\n   - 지역자원시설세 과세표준 분리 후에도 재산세 계산이 정확한지 확인\n   - 일반주택과 다가구주택 모두 테스트\n   - 특례세율 적용/미적용 케이스 테스트",
+        "title": "Fix Property Tax Calculation Display Format for Jeonse Fraud Reduction",
+        "description": "Modify the property tax calculation display format to show the correct step-by-step process for jeonse fraud reduction calculations with proper formatting and Korean explanations.",
         "status": "done",
         "dependencies": [
-          6,
-          7,
-          8,
           9
         ],
         "priority": "high",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "지역자원시설세 과세표준 처리 방식 분석",
-            "description": "현재 구현된 지역자원시설세 과세표준 처리 방식을 분석하고 예시와 일치하는지 확인",
-            "details": "",
-            "status": "done",
-            "dependencies": [],
-            "parentTaskId": 10
-          }
-        ]
+        "details": "1. Update the property tax calculation display format to match the required step-by-step process with the exact format specified by the user:\n\n```typescript\nfunction formatTaxCalculationSteps(calculationData) {\n  const {\n    standardTaxAmount,\n    fraudReductionAmount,\n    specialRateAmount,\n    step1Result,\n    taxBurdenCapAmount,\n    finalTaxAmount,\n    previousYearTax,\n    taxBurdenCapRate,\n    taxableValue,\n    standardRate,\n    specialRate,\n    deduction,\n    fraudReductionRate\n  } = calculationData;\n  \n  return {\n    sections: [\n      {\n        title: \"적용 세율\",\n        content: `특례세율 ${specialRate}%, 표준세율 ${standardRate}%, 공제액 ${formatCurrency(deduction)}원`\n      },\n      {\n        title: \"Step1. 과세표준을 적용한 계산\",\n        steps: [\n          {\n            stepNumber: 1,\n            title: \"특례세율 계산\",\n            description: \"1세대 1주택 특례세율을 적용한 세액 계산\",\n            calculation: `${formatCurrency(taxableValue)} × ${specialRate}% - ${formatCurrency(deduction)} × 100% = ${formatCurrency(specialRateAmount)} → ${formatCurrency(specialRateAmount)}원`,\n            result: formatCurrency(specialRateAmount)\n          },\n          {\n            stepNumber: 2,\n            title: \"전세사기 감면 계산\",\n            description: `전세사기 피해자 감면 ${fraudReductionRate*100}% 적용`,\n            calculation: `(${formatCurrency(taxableValue)} × ${standardRate}% - ${formatCurrency(deduction)}) × 전세사기 감면율 × 100% = ${formatCurrency(fraudReductionAmount)}원`,\n            result: formatCurrency(fraudReductionAmount)\n          },\n          {\n            stepNumber: 3,\n            title: \"Step1과 Step2 비교\",\n            description: \"특례세율과 전세사기 감면 중 낮은 세액 선택\",\n            calculation: `${formatCurrency(specialRateAmount)}원 vs ${formatCurrency(fraudReductionAmount)}원`,\n            result: formatCurrency(step1Result),\n            selectedMethod: specialRateAmount <= fraudReductionAmount ? \"특례세율 적용\" : \"전세사기 감면 적용\"\n          },\n          {\n            stepNumber: 4,\n            title: \"세부담상한 계산\",\n            description: \"전년도 세액 기준 세부담상한액 계산\",\n            calculation: `전년도 세액 ${formatCurrency(previousYearTax)}원 × 세부담상한율 ${taxBurdenCapRate}% = ${formatCurrency(taxBurdenCapAmount)}원`,\n            result: formatCurrency(taxBurdenCapAmount)\n          },\n          {\n            stepNumber: 5,\n            title: \"Step3과 Step4 비교\",\n            description: \"Step3 결과와 세부담상한액 중 낮은 세액 선택\",\n            calculation: `${formatCurrency(step1Result)}원 vs ${formatCurrency(taxBurdenCapAmount)}원`,\n            result: formatCurrency(Math.min(step1Result, taxBurdenCapAmount)),\n            selectedMethod: step1Result <= taxBurdenCapAmount ? \"Step3 결과 적용\" : \"세부담상한액 적용\"\n          },\n          {\n            stepNumber: 6,\n            title: \"최종 재산세액\",\n            description: \"최종 납부할 재산세 금액\",\n            result: formatCurrency(finalTaxAmount)\n          }\n        ]\n      }\n    ]\n  };\n}\n```\n\n2. Ensure each step is clearly labeled with proper Korean explanations and integrated into the main \"재산세 본세 계산\" section:\n   - Step1: 특례세율 계산\n   - Step2: 전세사기 감면 계산\n   - Step3: Step1과 Step2 비교, 낮은 세액 선택\n   - Step4: 세부담상한 계산\n   - Step5: Step3과 Step4 비교, 낮은 세액 선택\n   - Step6: 최종 재산세액\n\n3. Update the UI component to display the formatted steps with proper section headers:\n```typescript\nfunction TaxCalculationSteps({ calculationData }) {\n  const formattedData = formatTaxCalculationSteps(calculationData);\n  \n  return (\n    <div className=\"tax-calculation-steps\">\n      <h3>재산세 계산 과정</h3>\n      {formattedData.sections.map((section, sectionIndex) => (\n        <div key={sectionIndex} className=\"calculation-section\">\n          <h4 className=\"section-header\">### {section.title}</h4>\n          {section.content && <p className=\"section-content\">{section.content}</p>}\n          \n          {section.steps && section.steps.map((step, stepIndex) => (\n            <div key={stepIndex} className=\"calculation-step\">\n              <div className=\"step-header\">\n                <span className=\"step-number\">#### Step{step.stepNumber}:</span>\n                <span className=\"step-title\">{step.title}</span>\n              </div>\n              <div className=\"step-content\">\n                {step.description && <p className=\"step-description\">{step.description}</p>}\n                {step.calculation && <p className=\"step-calculation\">{step.calculation}</p>}\n                <p className=\"step-result\">결과: {step.result}원</p>\n                {step.selectedMethod && <p className=\"selected-method\">선택: {step.selectedMethod}</p>}\n              </div>\n            </div>\n          ))}\n        </div>\n      ))}\n    </div>\n  );\n}\n```\n\n4. Add proper CSS styling to ensure clear visual separation between sections and steps:\n```css\n.tax-calculation-steps {\n  margin: 20px 0;\n  border: 1px solid #e0e0e0;\n  border-radius: 8px;\n  padding: 15px;\n}\n\n.calculation-section {\n  margin-bottom: 25px;\n}\n\n.section-header {\n  font-weight: bold;\n  color: #1a365d;\n  margin-bottom: 15px;\n  border-bottom: 2px solid #4299e1;\n  padding-bottom: 5px;\n}\n\n.section-content {\n  margin-bottom: 15px;\n  color: #2d3748;\n  font-weight: 500;\n}\n\n.calculation-step {\n  margin-bottom: 15px;\n  padding-bottom: 15px;\n  border-bottom: 1px dashed #e0e0e0;\n  padding-left: 15px;\n}\n\n.calculation-step:last-child {\n  border-bottom: none;\n  margin-bottom: 0;\n  padding-bottom: 0;\n}\n\n.step-header {\n  font-weight: bold;\n  margin-bottom: 8px;\n}\n\n.step-number {\n  color: #2c5282;\n  margin-right: 8px;\n}\n\n.step-content {\n  padding-left: 15px;\n  color: #4a5568;\n}\n\n.step-result {\n  font-weight: bold;\n  color: #2d3748;\n}\n\n.selected-method {\n  color: #38a169;\n  font-style: italic;\n}\n```\n\n5. Ensure the calculation data is properly passed from the main calculation function with all required fields:\n```typescript\nfunction calculatePropertyTax(propertyData) {\n  // Existing calculation logic...\n  \n  // Prepare data for step display\n  const calculationData = {\n    taxableValue: taxableValue,\n    standardRate: standardRate,\n    specialRate: specialRate,\n    deduction: deduction,\n    standardTaxAmount: standardTaxAmount,\n    fraudReductionAmount: standardTaxAmount * fraudReductionRate, // e.g., 50% reduction\n    fraudReductionRate: fraudReductionRate,\n    specialRateAmount: specialRateAmount,\n    step1Result: Math.min(standardTaxAmount * fraudReductionRate, specialRateAmount),\n    taxBurdenCapAmount: previousYearTax * (taxBurdenCapRate / 100),\n    finalTaxAmount: finalTaxAmount,\n    previousYearTax: previousYearTax,\n    taxBurdenCapRate: taxBurdenCapRate\n  };\n  \n  return {\n    taxAmount: finalTaxAmount,\n    calculationSteps: formatTaxCalculationSteps(calculationData)\n  };\n}\n```\n\n6. Update the integration with the main calculation display to ensure the jeonse fraud reduction is properly shown as part of the main calculation process rather than as a separate section.",
+        "testStrategy": "1. Create unit tests for the formatting function:\n   ```typescript\n   describe('formatTaxCalculationSteps', () => {\n     it('should format calculation steps correctly with proper sections', () => {\n       const mockCalculationData = {\n         taxableValue: 75250000,\n         standardRate: 0.15,\n         specialRate: 0.1,\n         deduction: 30000,\n         standardTaxAmount: 82875,\n         fraudReductionAmount: 41430,\n         fraudReductionRate: 0.5,\n         specialRateAmount: 45250,\n         step1Result: 41430,\n         taxBurdenCapAmount: 42140,\n         finalTaxAmount: 41430,\n         previousYearTax: 60200,\n         taxBurdenCapRate: 70\n       };\n       \n       const result = formatTaxCalculationSteps(mockCalculationData);\n       \n       expect(result.sections).toHaveLength(2);\n       expect(result.sections[0].title).toBe(\"적용 세율\");\n       expect(result.sections[1].title).toBe(\"Step1. 과세표준을 적용한 계산\");\n       expect(result.sections[1].steps).toHaveLength(6);\n       expect(result.sections[1].steps[0].stepNumber).toBe(1);\n       expect(result.sections[1].steps[0].title).toBe(\"특례세율 계산\");\n       // Check all other steps and their properties\n     });\n     \n     it('should select the correct method when special rate is lower', () => {\n       const mockData = {\n         taxableValue: 75250000,\n         standardRate: 0.15,\n         specialRate: 0.1,\n         deduction: 30000,\n         standardTaxAmount: 82875,\n         fraudReductionAmount: 41430,\n         fraudReductionRate: 0.5,\n         specialRateAmount: 40000, // Lower than fraud reduction\n         step1Result: 40000,\n         // other properties...\n       };\n       \n       const result = formatTaxCalculationSteps(mockData);\n       expect(result.sections[1].steps[2].selectedMethod).toBe(\"특례세율 적용\");\n     });\n     \n     it('should select the correct method when fraud reduction is lower', () => {\n       const mockData = {\n         taxableValue: 75250000,\n         standardRate: 0.15,\n         specialRate: 0.1,\n         deduction: 30000,\n         standardTaxAmount: 82875,\n         fraudReductionAmount: 41430,\n         fraudReductionRate: 0.5,\n         specialRateAmount: 45250, // Higher than fraud reduction\n         step1Result: 41430,\n         // other properties...\n       };\n       \n       const result = formatTaxCalculationSteps(mockData);\n       expect(result.sections[1].steps[2].selectedMethod).toBe(\"전세사기 감면 적용\");\n     });\n\n     it('should format calculation steps with the exact format required by the user', () => {\n       const mockData = {\n         taxableValue: 75250000,\n         standardRate: 0.15,\n         specialRate: 0.1,\n         deduction: 30000,\n         standardTaxAmount: 82875,\n         fraudReductionAmount: 41430,\n         fraudReductionRate: 0.5,\n         specialRateAmount: 45250,\n         step1Result: 41430,\n         taxBurdenCapAmount: 42140,\n         finalTaxAmount: 41430,\n         previousYearTax: 60200,\n         taxBurdenCapRate: 70\n       };\n       \n       const result = formatTaxCalculationSteps(mockData);\n       \n       // Check for exact format matching\n       expect(result.sections[0].title).toBe(\"적용 세율\");\n       expect(result.sections[1].title).toBe(\"Step1. 과세표준을 적용한 계산\");\n       \n       // Check Step1 calculation format\n       expect(result.sections[1].steps[0].calculation).toContain(\"75,250,000 × 0.1% - 30,000 × 100% = 45,250\");\n       \n       // Check Step2 calculation format\n       expect(result.sections[1].steps[1].calculation).toContain(\"(75,250,000 × 0.15% - 30,000) × 전세사기 감면율 × 100% = 41,430원\");\n     });\n   });\n   ```\n\n2. Create integration tests to verify the UI component renders correctly with the new section structure:\n   ```typescript\n   describe('TaxCalculationSteps component', () => {\n     it('should render all sections and steps correctly', () => {\n       const mockCalculationData = {\n         // Test data matching the example format\n         taxableValue: 75250000,\n         standardRate: 0.15,\n         specialRate: 0.1,\n         deduction: 30000,\n         standardTaxAmount: 82875,\n         fraudReductionAmount: 41430,\n         fraudReductionRate: 0.5,\n         specialRateAmount: 45250,\n         step1Result: 41430,\n         taxBurdenCapAmount: 42140,\n         finalTaxAmount: 41430,\n         previousYearTax: 60200,\n         taxBurdenCapRate: 70\n       };\n       \n       const { getByText, getAllByText } = render(<TaxCalculationSteps calculationData={mockCalculationData} />);\n       \n       // Check section headers\n       expect(getByText('### 적용 세율')).toBeInTheDocument();\n       expect(getByText('### Step1. 과세표준을 적용한 계산')).toBeInTheDocument();\n       \n       // Check step headers\n       expect(getByText('#### Step1:')).toBeInTheDocument();\n       expect(getByText('특례세율 계산')).toBeInTheDocument();\n       expect(getByText('#### Step2:')).toBeInTheDocument();\n       expect(getByText('전세사기 감면 계산')).toBeInTheDocument();\n       \n       // Check calculations are rendered with proper format\n       expect(getByText(/75,250,000 × 0.1% - 30,000 × 100% = 45,250/)).toBeInTheDocument();\n     });\n   });\n   ```\n\n3. Perform manual testing with various scenarios to ensure the display matches the required format:\n   - Test with a case where standard tax with reduction is lower than special rate\n   - Test with a case where special rate is lower than standard tax with reduction\n   - Test with a case where tax burden cap amount is lower than both\n   - Test with a case where tax burden cap doesn't apply (no previous year tax)\n   - Verify that the exact calculation format matches the user's requirements\n\n4. Verify Korean text rendering and section structure:\n   - Check that all Korean text displays correctly without encoding issues\n   - Verify that explanations are clear and match the requirements\n   - Ensure section headers are properly formatted with \"###\" prefix\n   - Ensure step headers are properly formatted with \"####\" prefix\n\n5. Perform visual inspection:\n   - Verify that sections and steps are clearly separated and numbered\n   - Check that calculations are properly formatted with the exact format required\n   - Ensure selected methods are highlighted appropriately\n   - Verify that the jeonse fraud reduction is properly integrated into the main calculation flow\n\n6. Create end-to-end tests:\n   - Test the complete flow from property data input to calculation display\n   - Verify that changing input values updates the calculation steps correctly\n   - Ensure the display format remains consistent across different calculation scenarios",
+        "subtasks": []
       },
       {
         "id": 11,
-        "title": "지역자원시설세 1세대 1주택 특례 제거 및 세율 적용 수정",
-        "description": "지역자원시설세 계산에서 잘못 적용된 1세대 1주택 특례를 제거하고, 다가구주택의 각 구별 과세표준에 올바른 6단계 세율을 적용하도록 수정합니다.",
-        "details": "1. 지역자원시설세 계산에서 1세대 1주택 특례 제거\n   - 현재 코드에서 지역자원시설세에 잘못 적용된 1세대 1주택 50% 할인 로직 식별\n   - 관련 코드 제거 또는 수정\n```typescript\n// 기존 코드 (예시)\nfunction calculateResourceTax(standardPrice: number, isSpecialRate: boolean): number {\n  // 잘못된 코드: 1세대 1주택 특례 적용\n  const applySpecialRate = isSpecialRate ? 0.5 : 1;\n  // ...세율 계산 로직\n  return calculatedTax * applySpecialRate;\n}\n\n// 수정된 코드\nfunction calculateResourceTax(standardPrice: number): number {\n  // 1세대 1주택 특례 적용 제거 (isSpecialRate 파라미터 제거)\n  // ...세율 계산 로직\n  return calculatedTax;\n}\n```\n\n2. 올바른 6단계 세율 구간 적용 확인 및 수정\n   - 기존 세율 구간 코드를 새로운 6단계 세율 구간으로 업데이트\n```typescript\n// 수정된 지역자원시설세 세율 구간 정의\nconst RESOURCE_TAX_RATES = [\n  { min: 0, max: 6000000, rate: 0.0004, deduction: 0 },\n  { min: 6000000, max: 13000000, rate: 0.0005, deduction: 600 },\n  { min: 13000000, max: 26000000, rate: 0.0006, deduction: 1900 },\n  { min: 26000000, max: 39000000, rate: 0.0008, deduction: 7100 },\n  { min: 39000000, max: 64000000, rate: 0.001, deduction: 14900 },\n  { min: 64000000, max: Infinity, rate: 0.0012, deduction: 27700 }\n];\n```\n\n3. 다가구주택 각 구별 과세표준에 개별 세율 적용 확인\n   - 다가구주택 계산 로직에서 각 구별로 올바른 세율이 적용되는지 확인\n   - 필요시 수정 구현\n```typescript\n// 다가구주택 각 구별 지역자원시설세 계산 함수\nfunction calculateResourceTaxForMultiUnit(units: TaxCalculationUnit[]): number {\n  let totalResourceTax = 0;\n  \n  units.forEach(unit => {\n    // 각 구별 과세표준에 맞는 세율 찾기\n    const bracket = RESOURCE_TAX_RATES.find(\n      rate => unit.resourceTaxStandardPrice > rate.min && unit.resourceTaxStandardPrice <= rate.max\n    );\n    \n    // 세액 계산 (과세표준 × 세율 - 누진공제액)\n    const unitResourceTax = Math.floor(unit.resourceTaxStandardPrice * bracket.rate - bracket.deduction);\n    \n    // 계산된 세액 저장 및 합산\n    unit.calculatedResourceTax = unitResourceTax;\n    totalResourceTax += unitResourceTax;\n  });\n  \n  return totalResourceTax;\n}\n```\n\n4. 민원인 설명란에서 1세대 1주택 특례 관련 내용 제거\n   - 민원인 설명란 생성 함수에서 지역자원시설세 관련 1세대 1주택 특례 설명 제거\n```typescript\n// 지역자원시설세 계산 과정 설명 생성 함수 수정\nfunction generateResourceTaxExplanation(units: Array<{resourceTaxStandardPrice: number, calculatedResourceTax: number}>, totalResourceTax: number): string {\n  let explanation = '4. 지역자원시설세 계산\\n';\n  \n  // 각 구별 계산 과정 설명 (1세대 1주택 특례 관련 내용 제거)\n  units.forEach((unit, index) => {\n    const unitNumber = index + 1;\n    const bracket = RESOURCE_TAX_RATES.find(\n      rate => unit.resourceTaxStandardPrice > rate.min && unit.resourceTaxStandardPrice <= rate.max\n    );\n    \n    explanation += `  ${unitNumber}구: ${formatNumber(unit.resourceTaxStandardPrice)}원 × ${(bracket.rate * 100).toFixed(2)}%`;\n    if (bracket.deduction > 0) {\n      explanation += ` - ${formatNumber(bracket.deduction)}원`;\n    }\n    explanation += ` = ${formatNumber(unit.calculatedResourceTax)}원\\n`;\n  });\n  \n  explanation += `  합계: ${formatNumber(totalResourceTax)}원\\n`;\n  \n  return explanation;\n}\n```\n<info added on 2025-06-23T22:30:22.240Z>\n5. 구체적인 수정 대상 파일 및 위치\n\n   - src/utils/mainTaxCalculation.ts (Line 686)\n     * regionalResourceTaxHalf 계산 (50% 할인) 로직 제거\n\n   - src/components/ResultsDisplay.tsx (Line 26)\n     * regionalResourceTaxHalf 계산 (50% 할인) 로직 제거\n\n   - src/components/CalculationSteps.tsx (Line 61)\n     * 지역자원시설세 계산 설명에서 1세대 1주택 특례 관련 내용 제거\n\n6. 수정 작업 순서\n   - 먼저 mainTaxCalculation.ts 파일의 계산 로직 수정\n   - 다음으로 UI 컴포넌트(ResultsDisplay.tsx, CalculationSteps.tsx) 수정\n   - 각 파일 수정 후 테스트 케이스로 검증\n</info added on 2025-06-23T22:30:22.240Z>",
-        "testStrategy": "1. 1세대 1주택 특례 제거 테스트\n   - 1세대 1주택 특례가 적용되는 케이스와 적용되지 않는 케이스에 대해 지역자원시설세 계산 결과가 동일한지 확인\n   - 단위 테스트 작성:\n```typescript\ntest('지역자원시설세에 1세대 1주택 특례가 적용되지 않음', () => {\n  const standardPrice = 50000000;\n  \n  // 1세대 1주택인 경우\n  const taxWithSpecialRate = calculateResourceTax(standardPrice, true);\n  \n  // 1세대 1주택이 아닌 경우\n  const taxWithoutSpecialRate = calculateResourceTax(standardPrice, false);\n  \n  // 두 결과가 동일해야 함 (특례 적용 없음)\n  expect(taxWithSpecialRate).toBe(taxWithoutSpecialRate);\n});\n```\n\n2. 6단계 세율 구간 적용 정확성 테스트\n   - 각 세율 구간에 해당하는 과세표준 값으로 테스트\n   - 경계값 테스트 (5,999,999원, 6,000,000원, 6,000,001원 등)\n   - 테스트 케이스 예시:\n```typescript\ntest('지역자원시설세 6단계 세율 구간 적용 정확성', () => {\n  const testCases = [\n    { standardPrice: 5000000, expected: 2000 }, // 5,000,000 × 0.04% = 2,000원\n    { standardPrice: 6000000, expected: 2400 }, // 6,000,000 × 0.04% = 2,400원\n    { standardPrice: 10000000, expected: 4400 }, // 10,000,000 × 0.05% - 600 = 4,400원\n    { standardPrice: 20000000, expected: 10100 }, // 20,000,000 × 0.06% - 1,900 = 10,100원\n    { standardPrice: 30000000, expected: 16900 }, // 30,000,000 × 0.08% - 7,100 = 16,900원\n    { standardPrice: 50000000, expected: 35100 }, // 50,000,000 × 0.1% - 14,900 = 35,100원\n    { standardPrice: 70000000, expected: 56300 }, // 70,000,000 × 0.12% - 27,700 = 56,300원\n  ];\n  \n  testCases.forEach(({ standardPrice, expected }) => {\n    expect(calculateResourceTax(standardPrice)).toBe(expected);\n  });\n});\n```\n\n3. 다가구주택 각 구별 과세표준에 개별 세율 적용 테스트\n   - 다양한 구성의 다가구주택 케이스 테스트 (1~5구)\n   - 각 구별 과세표준이 다른 세율 구간에 속하는 경우 테스트\n```typescript\ntest('다가구주택 각 구별 지역자원시설세 계산 정확성', () => {\n  // 테스트 케이스: 3구 다가구주택, 각 구가 다른 세율 구간에 속함\n  const units = [\n    { resourceTaxStandardPrice: 5000000, calculatedResourceTax: 0 }, // 1구: 0.04% 구간\n    { resourceTaxStandardPrice: 10000000, calculatedResourceTax: 0 }, // 2구: 0.05% 구간\n    { resourceTaxStandardPrice: 30000000, calculatedResourceTax: 0 }  // 3구: 0.08% 구간\n  ];\n  \n  const totalResourceTax = calculateResourceTaxForMultiUnit(units);\n  \n  // 각 구별 계산 결과 확인\n  expect(units[0].calculatedResourceTax).toBe(2000); // 5,000,000 × 0.04% = 2,000원\n  expect(units[1].calculatedResourceTax).toBe(4400); // 10,000,000 × 0.05% - 600 = 4,400원\n  expect(units[2].calculatedResourceTax).toBe(16900); // 30,000,000 × 0.08% - 7,100 = 16,900원\n  \n  // 총합 확인\n  expect(totalResourceTax).toBe(23300); // 2,000 + 4,400 + 16,900 = 23,300원\n});\n```\n\n4. 민원인 설명란 내용 테스트\n   - 민원인 설명란에 1세대 1주택 특례 관련 내용이 제거되었는지 확인\n   - 올바른 세율과 누진공제액이 표시되는지 확인\n```typescript\ntest('민원인 설명란에 1세대 1주택 특례 관련 내용 제거 확인', () => {\n  const units = [\n    { resourceTaxStandardPrice: 20000000, calculatedResourceTax: 10100 }\n  ];\n  \n  const explanation = generateResourceTaxExplanation(units, 10100);\n  \n  // 1세대 1주택 특례 관련 문구가 없어야 함\n  expect(explanation).not.toContain('1세대 1주택');\n  expect(explanation).not.toContain('50%');\n  \n  // 올바른 세율과 누진공제액이 표시되어야 함\n  expect(explanation).toContain('20,000,000원 × 0.06%');\n  expect(explanation).toContain('- 1,900원');\n  expect(explanation).toContain('= 10,100원');\n});\n```\n\n5. 통합 테스트\n   - 실제 사용자 시나리오를 통한 전체 흐름 테스트\n   - UI에서 1세대 1주택 선택 여부에 관계없이 지역자원시설세가 동일하게 계산되는지 확인\n   - 다가구주택 선택 시 각 구별 계산이 올바르게 이루어지는지 확인",
-        "status": "done",
+        "title": "Fix Property Tax Calculation Display Format Issues",
+        "description": "Correct the property tax calculation display format to match the user's required format, fixing step numbering, value confusion, and formatting issues in the jeonse fraud reduction calculation display.",
+        "status": "pending",
         "dependencies": [
-          8,
           10
         ],
         "priority": "high",
-        "subtasks": []
-      },
-      {
-        "id": 12,
-        "title": "지역자원시설세 계산 로직 최종 개선 및 검증",
-        "description": "지역자원시설세 계산 로직을 최종 개선하여 1세대 1주택 특례 제거, 다가구주택 구별 세율 적용, 올바른 세율 구간 적용, 그리고 민원인 설명란 개선을 완료합니다.",
-        "details": "1. 지역자원시설세 세율 구간 최종 검증 및 수정\n   - 올바른 세율 구간 적용 확인:\n     * 600만원 이하: 0.04%\n     * 600만원 초과~1,300만원 이하: 0.05%-600원\n     * 1,300만원 초과~2,600만원 이하: 0.06%-1,900원\n     * 2,600만원 초과~3,900만원 이하: 0.08%-7,100원\n     * 3,900만원 초과~6,400만원 이하: 0.1%-14,900원\n     * 6,400만원 초과: 0.12%-27,700원\n\n```typescript\n// 최종 지역자원시설세 세율 구간 정의\nconst RESOURCE_TAX_RATES = [\n  { min: 0, max: 6000000, rate: 0.0004, deduction: 0 },\n  { min: 6000000, max: 13000000, rate: 0.0005, deduction: 600 },\n  { min: 13000000, max: 26000000, rate: 0.0006, deduction: 1900 },\n  { min: 26000000, max: 39000000, rate: 0.0008, deduction: 7100 },\n  { min: 39000000, max: 64000000, rate: 0.001, deduction: 14900 },\n  { min: 64000000, max: Infinity, rate: 0.0012, deduction: 27700 }\n];\n```\n\n2. 다가구주택 구별 과세표준에 개별 세율 적용 최종 검증\n   - 각 구별 과세표준에 맞는 세율 적용 확인\n   - 다가구주택 각 구의 지역자원시설세 계산 함수 최종 개선:\n\n```typescript\nfunction calculateResourceTaxForMultiUnit(units: TaxUnit[]): number {\n  let totalResourceTax = 0;\n  \n  // 각 구별로 개별 세율 적용\n  units.forEach(unit => {\n    const standardPrice = unit.resourceTaxStandardPrice;\n    const bracket = RESOURCE_TAX_RATES.find(\n      rate => standardPrice > rate.min && standardPrice <= rate.max\n    );\n    \n    // 세액 계산 (과세표준 × 세율 - 누진공제액)\n    const taxAmount = Math.floor(standardPrice * bracket.rate - bracket.deduction);\n    \n    // 10원 미만 절사 적용\n    unit.calculatedResourceTax = Math.floor(taxAmount / 10) * 10;\n    totalResourceTax += unit.calculatedResourceTax;\n  });\n  \n  return totalResourceTax;\n}\n```\n\n3. 1세대 1주택 특례 완전 제거 확인\n   - 기존 코드에서 1세대 1주택 특례 관련 로직 완전 제거 확인\n   - 관련 파라미터 및 조건문 제거 확인\n\n```typescript\n// 수정 전 코드 (예시)\nfunction calculateResourceTax(standardPrice: number, isSpecialRate: boolean): number {\n  // 잘못된 코드: 1세대 1주택 특례 적용\n  const applySpecialRate = isSpecialRate ? 0.5 : 1;\n  // ...세율 계산 로직\n  return calculatedTax * applySpecialRate;\n}\n\n// 수정 후 코드\nfunction calculateResourceTax(standardPrice: number): number {\n  // 1세대 1주택 특례 관련 코드 완전 제거\n  const bracket = RESOURCE_TAX_RATES.find(\n    rate => standardPrice > rate.min && standardPrice <= rate.max\n  );\n  \n  // 세액 계산 (과세표준 × 세율 - 누진공제액)\n  const taxAmount = Math.floor(standardPrice * bracket.rate - bracket.deduction);\n  \n  // 10원 미만 절사 적용\n  return Math.floor(taxAmount / 10) * 10;\n}\n```\n\n4. 민원인 설명란 계산 과정 표시 최종 개선\n   - 다가구주택 각 구별 계산 과정 상세 표시 구현:\n\n```typescript\nfunction generateResourceTaxExplanation(units: TaxUnit[]): string {\n  let explanation = '4. 지역자원시설세 계산\\n';\n  \n  // 각 구별 계산 과정 설명\n  units.forEach((unit, index) => {\n    const unitNumber = index + 1;\n    const standardPrice = unit.resourceTaxStandardPrice;\n    const bracket = RESOURCE_TAX_RATES.find(\n      rate => standardPrice > rate.min && standardPrice <= rate.max\n    );\n    \n    // 세율 및 누진공제액 정보\n    const ratePercent = bracket.rate * 100;\n    const deduction = bracket.deduction;\n    \n    // 계산 과정 설명\n    explanation += `  [${unitNumber}구] 과세표준: ${formatNumber(standardPrice)}원\\n`;\n    explanation += `    적용세율: ${ratePercent}% (누진공제액: ${formatNumber(deduction)}원)\\n`;\n    explanation += `    계산: ${formatNumber(standardPrice)} × ${ratePercent}% - ${formatNumber(deduction)} = ${formatNumber(unit.calculatedResourceTax)}원\\n\\n`;\n  });\n  \n  // 총 지역자원시설세 표시\n  const totalResourceTax = units.reduce((sum, unit) => sum + unit.calculatedResourceTax, 0);\n  explanation += `  총 지역자원시설세: ${formatNumber(totalResourceTax)}원\\n`;\n  \n  return explanation;\n}\n\n// 숫자 포맷팅 함수 (천 단위 콤마)\nfunction formatNumber(num: number): string {\n  return num.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \",\");\n}\n```\n\n5. 10원 미만 절사 적용 확인\n   - 모든 세액 계산에서 10원 미만 절사가 올바르게 적용되는지 확인\n   - 관련 코드 검증 및 필요시 수정\n<info added on 2025-06-23T22:43:19.303Z>\n5. 최종 검증 결과\n   - 코드 분석 완료 결과:\n     * 올바른 6단계 세율 구간 적용 확인됨\n     * 다가구주택 각 구별 계산 로직 정상 구현됨\n     * 다가구주택 각 구별 과세표준에 개별 세율 적용 확인됨\n     * 민원인 설명란에서 다가구주택 각 구별 계산 과정 상세 표시 구현됨\n     * 1세대 1주택 특례 제거 완료 확인됨 (Task 11에서 완료)\n     * 10원 미만 절사 모든 계산에 올바르게 적용됨\n\n6. 결론\n   - 지역자원시설세 계산 로직이 모든 요구사항을 충족하여 올바르게 구현됨\n   - 추가 수정 불필요\n   - 테스트 케이스를 통한 최종 검증 완료\n</info added on 2025-06-23T22:43:19.303Z>",
-        "testStrategy": "1. 세율 구간별 계산 정확성 테스트\n   - 각 세율 구간에 대한 테스트 케이스 작성:\n```typescript\ntest('지역자원시설세 세율 구간별 계산 정확성', () => {\n  const testCases = [\n    { standardPrice: 5000000, expected: 2000 },  // 600만원 이하: 0.04%\n    { standardPrice: 10000000, expected: 4400 }, // 600만원 초과~1,300만원 이하: 0.05%-600원\n    { standardPrice: 20000000, expected: 10100 }, // 1,300만원 초과~2,600만원 이하: 0.06%-1,900원\n    { standardPrice: 30000000, expected: 16900 }, // 2,600만원 초과~3,900만원 이하: 0.08%-7,100원\n    { standardPrice: 50000000, expected: 35100 }, // 3,900만원 초과~6,400만원 이하: 0.1%-14,900원\n    { standardPrice: 70000000, expected: 56300 }, // 6,400만원 초과: 0.12%-27,700원\n  ];\n  \n  testCases.forEach(({ standardPrice, expected }) => {\n    const result = calculateResourceTax(standardPrice);\n    expect(result).toBe(expected);\n  });\n});\n```\n\n2. 다가구주택 구별 세율 적용 테스트\n```typescript\ntest('다가구주택 구별 세율 적용 정확성', () => {\n  // 다양한 과세표준을 가진 다가구주택 테스트\n  const units = [\n    { resourceTaxStandardPrice: 5000000 },  // 1구: 600만원 이하\n    { resourceTaxStandardPrice: 10000000 }, // 2구: 600만원 초과~1,300만원 이하\n    { resourceTaxStandardPrice: 20000000 }, // 3구: 1,300만원 초과~2,600만원 이하\n    { resourceTaxStandardPrice: 40000000 }  // 4구: 3,900만원 초과~6,400만원 이하\n  ];\n  \n  const result = calculateResourceTaxForMultiUnit(units);\n  \n  // 각 구별 계산 결과 확인\n  expect(units[0].calculatedResourceTax).toBe(2000);  // 5,000,000 × 0.04% = 2,000원\n  expect(units[1].calculatedResourceTax).toBe(4400);  // 10,000,000 × 0.05% - 600 = 4,400원\n  expect(units[2].calculatedResourceTax).toBe(10100); // 20,000,000 × 0.06% - 1,900 = 10,100원\n  expect(units[3].calculatedResourceTax).toBe(25100); // 40,000,000 × 0.1% - 14,900 = 25,100원\n  \n  // 총 지역자원시설세 확인\n  expect(result).toBe(41600); // 2,000 + 4,400 + 10,100 + 25,100 = 41,600원\n});\n```\n\n3. 1세대 1주택 특례 제거 확인 테스트\n```typescript\ntest('지역자원시설세에 1세대 1주택 특례가 적용되지 않음', () => {\n  const standardPrice = 50000000;\n  \n  // 1세대 1주택 여부와 관계없이 동일한 결과가 나와야 함\n  const result1 = calculateResourceTax(standardPrice);\n  const result2 = calculateResourceTax(standardPrice); // 이전에는 isSpecialRate 파라미터가 있었음\n  \n  expect(result1).toBe(35100); // 50,000,000 × 0.1% - 14,900 = 35,100원\n  expect(result2).toBe(35100);\n  expect(result1).toBe(result2); // 두 결과가 동일해야 함\n});\n```\n\n4. 민원인 설명란 표시 테스트\n```typescript\ntest('민원인 설명란의 지역자원시설세 계산 과정 표시 정확성', () => {\n  const units = [\n    { resourceTaxStandardPrice: 5000000, calculatedResourceTax: 2000 },\n    { resourceTaxStandardPrice: 10000000, calculatedResourceTax: 4400 }\n  ];\n  \n  const explanation = generateResourceTaxExplanation(units);\n  \n  // 설명에 각 구별 과세표준, 세율, 누진공제액, 계산 과정이 포함되어 있는지 확인\n  expect(explanation).toContain('[1구] 과세표준: 5,000,000원');\n  expect(explanation).toContain('적용세율: 0.04% (누진공제액: 0원)');\n  expect(explanation).toContain('계산: 5,000,000 × 0.04% - 0 = 2,000원');\n  \n  expect(explanation).toContain('[2구] 과세표준: 10,000,000원');\n  expect(explanation).toContain('적용세율: 0.05% (누진공제액: 600원)');\n  expect(explanation).toContain('계산: 10,000,000 × 0.05% - 600 = 4,400원');\n  \n  expect(explanation).toContain('총 지역자원시설세: 6,400원');\n});\n```\n\n5. 10원 미만 절사 적용 테스트\n```typescript\ntest('지역자원시설세 계산에서 10원 미만 절사 적용', () => {\n  // 10원 미만 절사가 필요한 테스트 케이스\n  const testCases = [\n    { standardPrice: 5000123, expected: 2000 },  // 2,000.0492원 → 2,000원\n    { standardPrice: 10000456, expected: 4400 }, // 4,400.228원 → 4,400원\n    { standardPrice: 20000789, expected: 10100 }, // 10,100.4734원 → 10,100원\n  ];\n  \n  testCases.forEach(({ standardPrice, expected }) => {\n    const result = calculateResourceTax(standardPrice);\n    expect(result).toBe(expected);\n  });\n});",
-        "status": "done",
-        "dependencies": [
-          8,
-          10,
-          11
-        ],
-        "priority": "medium",
-        "subtasks": []
-      },
-      {
-        "id": 13,
-        "title": "지역자원시설세 민원인 설명란 표시 오류 수정",
-        "description": "민원인 설명란에서 지역자원시설세 계산 과정 및 결과가 잘못 표시되는 문제를 수정하여 올바른 과세표준, 세율 적용, 특례 제거 및 최종 세액을 표시합니다.",
-        "details": "1. 민원인 설명란의 지역자원시설세 표시 오류 분석\n   - 현재 표시되는 과세표준 값 검토: 1구(94,205,773원), 2구(77,725,114원), 3구(77,725,114원)\n   - 올바른 과세표준 값 확인: 1구(2,494,377원), 2구(2,058,003원), 3구(2,058,003원)\n   - 1세대 1주택 특례가 여전히 표시되는 문제 확인\n   - 최종 세액 계산 오류 분석 (현재: 271,880원, 올바른 값: 2,640원)\n\n2. 다가구주택 지역자원시설세 과세표준 계산 로직 수정\n```typescript\n// 기존 과세표준 계산 로직 검토\nfunction calculateResourceTaxStandardPrice(unit) {\n  // 현재 로직이 재산세 과세표준과 동일하게 계산되는지 확인\n  // 올바른 지역자원시설세 과세표준 계산 로직으로 수정\n  return correctResourceTaxStandardPrice;\n}\n```\n\n3. 민원인 설명란 표시 로직 수정\n```typescript\nfunction generateResourceTaxExplanation(units, totalResourceTax) {\n  let explanation = '4. 지역자원시설세 계산\\n';\n  \n  // 각 구별 올바른 과세표준 표시\n  units.forEach((unit, index) => {\n    const unitNumber = index + 1;\n    explanation += `  ${unitNumber}구: ${formatNumber(unit.resourceTaxStandardPrice)}원\\n`;\n    \n    // 세율 구간 확인 및 표시\n    const taxBracket = getTaxBracket(unit.resourceTaxStandardPrice, RESOURCE_TAX_RATES);\n    explanation += `    세율: ${(taxBracket.rate * 100).toFixed(2)}% (${formatNumber(taxBracket.min)}원 ~ ${formatNumber(taxBracket.max)}원)\\n`;\n    \n    // 계산 과정 표시\n    const calculatedTax = Math.floor((unit.resourceTaxStandardPrice * taxBracket.rate) - taxBracket.deduction);\n    explanation += `    계산: ${formatNumber(unit.resourceTaxStandardPrice)}원 × ${(taxBracket.rate * 100).toFixed(2)}%`;\n    \n    if (taxBracket.deduction > 0) {\n      explanation += ` - ${formatNumber(taxBracket.deduction)}원`;\n    }\n    \n    explanation += ` = ${formatNumber(calculatedTax)}원\\n`;\n  });\n  \n  // 1세대 1주택 특례 표시 제거\n  // 기존 코드에서 아래와 같은 특례 표시 부분 제거\n  // explanation += '  1세대 1주택 특례 50% 적용\\n';\n  \n  // 최종 세액 표시\n  explanation += `  최종 지역자원시설세: ${formatNumber(totalResourceTax)}원\\n`;\n  \n  return explanation;\n}\n```\n\n4. 1세대 1주택 특례 표시 완전 제거 확인\n   - 민원인 설명란에서 지역자원시설세 관련 1세대 1주택 특례 문구가 표시되지 않도록 확인\n   - 특례 관련 조건문 및 텍스트 생성 코드 제거\n\n5. 최종 세액 계산 및 표시 검증\n   - 각 구별 계산된 세액의 합이 올바르게 표시되는지 확인\n   - 천 단위 콤마 포맷팅이 올바르게 적용되는지 확인\n<info added on 2025-06-23T22:51:37.673Z>\n6. 구체적인 코드 수정 사항\n   - ResultsDisplay.tsx Line 271-278: 다가구주택에서 1세대 1주택 특례 50% 할인 적용 코드 제거\n   ```typescript\n   // 제거해야 할 코드\n   if (isEligibleForSingleHomeDiscount) {\n     explanation += '  1세대 1주택 특례 50% 적용\\n';\n     // 관련 할인 계산 코드\n   }\n   ```\n   \n   - ResultsDisplay.tsx Line 241: 과세표준 참조 변수 수정\n   ```typescript\n   // 수정 전\n   explanation += `  ${unitNumber}구: ${formatNumber(unit.taxableStandard)}원\\n`;\n   \n   // 수정 후\n   explanation += `  ${unitNumber}구: ${formatNumber(unit.regionalResourceTaxStandard)}원\\n`;\n   ```\n   \n7. 과세표준 값 오류 원인 및 해결 방안\n   - 현재 재산세 과세표준(9천만원대)을 지역자원시설세 계산에 잘못 사용 중\n   - 지역자원시설세는 시가표준액의 0.04%~0.12%를 적용하므로 과세표준이 훨씬 낮아야 함\n   - 올바른 지역자원시설세 과세표준 계산 로직 구현 필요\n   ```typescript\n   function calculateRegionalResourceTaxStandard(propertyValue) {\n     // 시가표준액 기준으로 지역자원시설세 과세표준 계산\n     // 재산세 과세표준과 다른 별도 계산 로직 적용\n     return correctResourceTaxStandard;\n   }\n   ```\n\n8. 테스트 검증 포인트\n   - 다가구주택 각 구별 지역자원시설세 과세표준이 올바르게 표시되는지 확인\n   - 1세대 1주택 특례 관련 문구가 완전히 제거되었는지 확인\n   - 최종 세액이 2,640원으로 올바르게 계산되는지 검증\n</info added on 2025-06-23T22:51:37.673Z>\n<info added on 2025-06-23T22:55:19.106Z>\n9. 수정 작업 완료 내역\n   - ResultsDisplay.tsx Line 243: 다가구주택에서 각 구별 과세표준을 `unit.regionalResourceTaxStandard || unit.taxableStandard`로 올바르게 사용\n   - ResultsDisplay.tsx Line 271-278: 다가구주택에서 1세대 1주택 특례 50% 할인 완전 제거\n   - ResultsDisplay.tsx Line 331: 단일 주택에서도 1세대 1주택 특례 완전 제거\n   - ResultsDisplay.tsx Line 269-275: 민원인 설명란에서 각 구별 세율 적용을 \"× 10,000분의 4\"로 명확히 표시\n\n10. 수정 결과 검증\n    - 다가구주택에서 각 구별 지역자원시설세 과세표준이 올바르게 계산됨\n    - 1세대 1주택 특례가 완전히 제거되어 더 이상 50% 할인이 적용되지 않음\n    - 민원인 설명란에서 올바른 계산 과정이 표시됨\n    - 최종 세액이 2천원대로 올바르게 계산됨\n\n11. 배포 및 적용\n    - 백엔드와 프론트엔드 서버 모두 재시작하여 수정사항 적용 완료\n    - 변경사항이 실제 환경에서 정상 작동 확인\n</info added on 2025-06-23T22:55:19.106Z>",
-        "testStrategy": "1. 지역자원시설세 과세표준 표시 정확성 테스트\n   - 다양한 다가구주택 케이스에 대해 각 구별 과세표준이 올바르게 표시되는지 확인\n   - 테스트 케이스:\n     * 3구 다가구주택: 1구(2,494,377원), 2구(2,058,003원), 3구(2,058,003원)\n     * 2구 다가구주택: 각 구별 과세표준이 올바르게 계산되는지 확인\n     * 4구 이상 다가구주택: 각 구별 과세표준이 올바르게 계산되는지 확인\n\n2. 세율 적용 및 계산 과정 표시 테스트\n   - 각 구별 과세표준에 맞는 세율(0.04%)이 올바르게 표시되는지 확인\n   - 계산 과정이 명확하게 표시되는지 확인:\n     * 1구: 2,494,377원 × 0.04% = 998원\n     * 2구: 2,058,003원 × 0.04% = 823원\n     * 3구: 2,058,003원 × 0.04% = 823원\n\n3. 1세대 1주택 특례 제거 확인 테스트\n   - 1세대 1주택 조건에서 지역자원시설세 계산 시 특례 문구가 표시되지 않는지 확인\n   - 특례 적용 전후 세액이 동일한지 확인\n\n4. 최종 세액 표시 정확성 테스트\n   - 각 구별 계산된 세액의 합이 올바르게 표시되는지 확인 (예상 결과: 2,640원)\n   - 다양한 다가구주택 구성에 대해 최종 세액이 올바르게 계산되는지 확인\n\n5. UI 렌더링 테스트\n   - 민원인 설명란에서 지역자원시설세 섹션이 올바르게 렌더링되는지 확인\n   - 숫자 포맷팅(천 단위 콤마)이 올바르게 적용되는지 확인\n   - 텍스트 정렬 및 들여쓰기가 가독성 있게 표시되는지 확인\n\n6. 통합 테스트\n   - 실제 세금 계산 프로세스에서 민원인 설명란이 올바르게 생성되는지 확인\n   - 다양한 입력값(주택가격, 다가구 구성 등)에 대해 일관되게 올바른 결과가 표시되는지 확인",
-        "status": "done",
-        "dependencies": [
-          12,
-          9,
-          11
-        ],
-        "priority": "high",
-        "subtasks": []
-      },
-      {
-        "id": 14,
-        "title": "지역자원시설세 최종 세액 계산 및 표시 오류 수정",
-        "description": "민원인 설명란에서 지역자원시설세 합계(2,644.1532원)는 올바르게 표시되지만, 10원 미만 절사 후 최종 세액이 271,880원으로 잘못 표시되는 문제를 수정합니다.",
-        "details": "1. ResultsDisplay.tsx 파일에서 지역자원시설세 최종 세액 계산 로직 분석\n   - 현재 표시 문제 확인: 합계 2,644.1532원이 10원 미만 절사 후 271,880원으로 잘못 표시됨\n   - 올바른 값은 2,640원이어야 함 (2,644.1532 → 2,640)\n\n2. 10원 미만 절사 로직 검토 및 수정\n```typescript\n// 기존 코드 (예시)\nfunction calculateFinalResourceTax(totalResourceTax: number): number {\n  // 문제가 있는 로직 식별\n  // 가능한 오류: 단위 변환 문제, 다른 세금과 혼동, 계산식 오류 등\n  return Math.floor(totalResourceTax / 10) * 10;\n}\n\n// 수정된 코드\nfunction calculateFinalResourceTax(totalResourceTax: number): number {\n  // 10원 미만 절사 로직 수정\n  // 소수점 처리 후 10원 단위로 절사\n  return Math.floor(totalResourceTax / 10) * 10;\n}\n```\n\n3. 민원인 설명란의 지역자원시설세 최종 세액 표시 부분 수정\n```typescript\n// ResultsDisplay.tsx 내 관련 부분 수정\nfunction renderResourceTaxExplanation(resourceTaxData) {\n  const totalResourceTax = resourceTaxData.totalBeforeTruncation; // 2,644.1532\n  const finalResourceTax = Math.floor(totalResourceTax / 10) * 10; // 2,640\n  \n  return (\n    <div className=\"tax-explanation\">\n      <p>지역자원시설세 합계: {formatNumber(totalResourceTax, 4)}원</p>\n      <p>10원 미만 절사 후 최종 지역자원시설세: {formatNumber(finalResourceTax)}원</p>\n    </div>\n  );\n}\n```\n\n4. 숫자 포맷팅 함수 검토\n```typescript\n// 숫자 포맷팅 함수 확인\nfunction formatNumber(value: number, decimalPlaces: number = 0): string {\n  // 소수점 자리수 처리 및 천 단위 콤마 적용\n  return value.toFixed(decimalPlaces).replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',');\n}\n```\n\n5. 최종 세액 계산 과정에서 발생할 수 있는 다른 오류 검토\n   - 세액 계산 과정에서 단위 변환 문제 (원 단위와 천원 단위 혼동)\n   - 다른 세금 항목과의 혼동 가능성 검토\n   - 계산식에서 곱셈/나눗셈 순서 오류 확인\n<info added on 2025-06-23T23:00:10.060Z>\n6. 수정 작업 완료 내역\n   - generateDetailedExplanation 함수 시작 부분에 regionalTaxAfterProcessing 변수 선언\n   - 다가구주택 블록에서 regionalTaxAfterProcessing = totalRegionalTax 할당\n   - 단일 주택 블록에서 regionalTaxAfterProcessing = regionalTaxAfterOwnership 할당\n   - 10원 미만 절사 계산을 regionalTaxAfterProcessing 기준으로 수정\n   - 소액 징수면제 조건도 계산된 finalRegionalTax 기준으로 수정\n\n7. 수정 결과 확인\n   - 기존: 합계 2,644.1532원 → 최종 271,880원 (잘못된 계산)\n   - 수정: 합계 2,644.1532원 → 최종 2,640원 (올바른 10원 미만 절사 적용)\n   - 민원인 설명란에서 지역자원시설세가 올바르게 표시되는 것 확인\n\n8. 테스트 완료\n   - 다양한 세액 케이스에서 10원 미만 절사가 올바르게 적용되는지 확인\n   - 다가구/단일 주택 모두에서 정상 작동 확인\n</info added on 2025-06-23T23:00:10.060Z>",
-        "testStrategy": "1. 지역자원시설세 최종 세액 계산 정확성 테스트\n   - 다양한 지역자원시설세 합계 값에 대한 10원 미만 절사 결과 검증\n   - 테스트 케이스:\n     * 2,644.1532원 → 2,640원\n     * 1,235.78원 → 1,230원\n     * 5,000.00원 → 5,000원\n     * 999.99원 → 990원\n   - 단위 테스트 작성:\n```typescript\ntest('지역자원시설세 10원 미만 절사 정확성', () => {\n  const testCases = [\n    { total: 2644.1532, expected: 2640 },\n    { total: 1235.78, expected: 1230 },\n    { total: 5000.00, expected: 5000 },\n    { total: 999.99, expected: 990 }\n  ];\n  \n  testCases.forEach(({ total, expected }) => {\n    expect(calculateFinalResourceTax(total)).toBe(expected);\n  });\n});\n```\n\n2. 민원인 설명란 표시 정확성 테스트\n   - 실제 UI에서 지역자원시설세 합계와 최종 세액이 올바르게 표시되는지 확인\n   - 다양한 다가구주택 케이스에 대해 테스트:\n     * 2구 다가구주택\n     * 3구 다가구주택\n     * 4구 이상 다가구주택\n   - 각 케이스에서 합계와 최종 세액 표시 확인\n\n3. 통합 테스트\n   - 실제 세금 계산 흐름에서 지역자원시설세 계산부터 최종 표시까지 전체 과정 검증\n   - 다양한 입력값(공시가격, 다가구주택 구 수 등)에 대한 최종 결과 확인\n   - 특히 문제가 발생했던 케이스(2,644.1532원 → 271,880원)에 대한 집중 테스트\n\n4. 브라우저 호환성 테스트\n   - 다양한 브라우저에서 숫자 포맷팅 및 표시가 일관되게 작동하는지 확인\n   - 모바일 환경에서도 올바르게 표시되는지 확인",
-        "status": "done",
-        "dependencies": [
-          13
-        ],
-        "priority": "high",
-        "subtasks": []
-      },
-      {
-        "id": 15,
-        "title": "지역자원시설세 계산 로직 표준세율 방식으로 통일",
-        "description": "mainTaxCalculation.ts의 calculateRegionalResourceTax 함수와 ResultsDisplay.tsx의 민원인 설명란 간 지역자원시설세 계산 결과 불일치를 해결합니다. 테스트 결과 계산 로직은 수학적으로 동일하므로, 실제 애플리케이션에서 발생하는 다른 요인들을 분석하고 수정합니다.",
-        "status": "done",
-        "dependencies": [
-          12,
-          13,
-          14
-        ],
-        "priority": "high",
-        "details": "1. 현재 불일치 상황 분석\n   - 테스트 결과 두 계산 방식(간이세율과 표준세율)이 수학적으로 동일함을 확인\n   - 그러나 실제 애플리케이션에서는 계산 결과에 차이가 발생\n   - 계산 로직 자체보다 데이터 처리 흐름에서 불일치 원인 찾아야 함\n\n2. 불일치 원인 가능성 분석\n   - 입력값 전처리 과정의 차이\n   - 건물소유비율 적용 방식의 차이\n   - 10원 미만 절사 타이밍 차이\n   - 소액 징수면제(1,000원 미만) 처리 방식 차이\n   - formatCurrency 함수 등 표시 로직의 차이\n\n3. 데이터 흐름 분석 및 로깅 추가\n```typescript\n// 중간 계산 과정 로깅 추가\nfunction calculateRegionalResourceTax(standardPrice: number): number {\n  console.log('Input standardPrice:', standardPrice);\n  \n  // 계산 로직...\n  const result = /* 계산 결과 */;\n  \n  console.log('Calculated tax before formatting:', result);\n  return result;\n}\n```\n\n4. 표시 로직 검토 및 통일\n```typescript\n// 공통 포맷팅 유틸리티 함수 정의\nexport function formatTaxAmount(amount: number): number {\n  // 10원 미만 절사\n  const truncated = Math.floor(amount / 10) * 10;\n  \n  // 1,000원 미만 징수면제 처리\n  return truncated < 1000 ? 0 : truncated;\n}\n\n// 두 파일에서 동일한 포맷팅 함수 사용하도록 수정\n```\n\n5. 실제 UI 테스트를 통한 불일치 원인 파악\n   - 브라우저 개발자 도구를 활용한 실시간 값 추적\n   - 동일 입력값에 대한 전체 계산 과정 비교\n   - 불일치 지점 식별 및 수정\n\n6. 수정 방안 구현\n   - 식별된 불일치 원인에 따라 적절한 수정 적용\n   - 공통 유틸리티 함수를 사용하여 코드 중복 방지\n   - 명확한 주석 추가하여 처리 로직 문서화",
-        "testStrategy": "1. 실제 UI에서의 계산 결과 비교 테스트\n```typescript\ntest('실제 UI에서 지역자원시설세 계산 결과 일치성 검증', async () => {\n  // 테스트 주택 정보 설정\n  const testCases = [\n    { publicPrice: 200000000, units: 3 },\n    { publicPrice: 500000000, units: 1 },\n    { publicPrice: 800000000, units: 2 }\n  ];\n  \n  for (const testCase of testCases) {\n    // 테스트 데이터 설정\n    await setHousingInfo(testCase);\n    \n    // 계산 실행\n    await clickCalculateButton();\n    \n    // 계산 과정 중간값 로깅\n    console.log('Input values:', testCase);\n    console.log('Calculated tax:', getCalculatedResourceTax());\n    console.log('Displayed tax:', getDisplayedResourceTax());\n    \n    // 두 값이 일치하는지 확인\n    expect(getCalculatedResourceTax()).toBe(getDisplayedResourceTax());\n  }\n});\n```\n\n2. 데이터 처리 흐름 테스트\n```typescript\ntest('지역자원시설세 데이터 처리 흐름 검증', () => {\n  const testStandardPrice = 50000000;\n  \n  // 각 처리 단계별 값 추적\n  const rawCalculated = calculateRegionalResourceTaxRaw(testStandardPrice);\n  console.log('Raw calculated value:', rawCalculated);\n  \n  const afterTruncation = Math.floor(rawCalculated / 10) * 10;\n  console.log('After 10원 truncation:', afterTruncation);\n  \n  const afterExemption = afterTruncation < 1000 ? 0 : afterTruncation;\n  console.log('After small amount exemption:', afterExemption);\n  \n  const displayFormatted = formatForDisplay(afterExemption);\n  console.log('Formatted for display:', displayFormatted);\n  \n  // ResultsDisplay에서 사용하는 계산 과정 추적\n  const displayCalculation = getDisplayResourceTaxCalculation(testStandardPrice);\n  console.log('Display calculation result:', displayCalculation);\n  \n  // 최종 결과 비교\n  expect(afterExemption).toBe(displayCalculation);\n});\n```\n\n3. 포맷팅 함수 일관성 테스트\n```typescript\ntest('세금 포맷팅 함수 일관성 검증', () => {\n  const testValues = [\n    { input: 999, expected: 0 },      // 1,000원 미만 면제\n    { input: 1234.56, expected: 1230 }, // 10원 미만 절사\n    { input: 5000, expected: 5000 },   // 정상 케이스\n  ];\n  \n  testValues.forEach(({ input, expected }) => {\n    // 계산 모듈의 포맷팅 결과\n    const calculationFormatted = formatTaxAmount(input);\n    \n    // 표시 모듈의 포맷팅 결과\n    const displayFormatted = formatDisplayAmount(input);\n    \n    // 두 포맷팅 결과가 서로 일치하는지 확인\n    expect(calculationFormatted).toBe(expected);\n    expect(displayFormatted).toBe(expected);\n    expect(calculationFormatted).toBe(displayFormatted);\n  });\n});\n```\n\n4. 경계값 및 특수 케이스 테스트\n   - 소액 징수면제 경계값(999원, 1,000원)\n   - 10원 미만 절사 경계값(예: 1,234.56원 → 1,230원)\n   - 건물소유비율 적용 전후 값 비교\n   - 1세대 1주택 특례 적용 여부 확인",
+        "details": "1. Fix Step1 vs Step2 value confusion:\n   - Update the display logic to show 45,250원 (special rate) in Step1\n   - Update Step2 to show 41,430원 (fraud reduction)\n   - Ensure the correct values are associated with each step\n\n2. Correct the calculation formula display in Step2:\n   - Implement the exact format \"41.437.5 → 41,430원\" for the fraud reduction calculation\n   - Ensure decimal points and thousands separators are correctly formatted\n   - Round values appropriately according to business rules\n\n3. Fix Step3 comparison text:\n   - Update the comparison text to exactly match: \"Step1의 45,250원 VS Step2의 41,430원 중 적은 값: 41,430원\"\n   - Ensure the correct values are pulled from previous steps\n   - Maintain consistent formatting with Korean text\n\n4. Implement proper Korean formatting for step headers:\n   - Update all step headers to use the format \"#### Step1:\", \"#### Step2:\", etc.\n   - Ensure consistent capitalization and spacing\n   - Apply these formatting changes across all steps\n\n5. Fix the tax burden ceiling calculation display format:\n   - Update the display to match the user's \"올바른 표기 모습\" format\n   - Ensure correct calculation and presentation of the ceiling amount\n   - Format numbers with appropriate separators and currency symbols\n\n6. Update the formatting function to implement all these changes:\n```typescript\nfunction formatPropertyTaxCalculation(calculationData) {\n  const {\n    specialRateAmount,\n    fraudReductionAmount,\n    finalTaxAmount,\n    // other required values...\n  } = calculationData;\n  \n  // Format numbers with proper Korean currency format\n  const formatCurrency = (amount) => {\n    return Math.round(amount).toLocaleString('ko-KR') + '원';\n  };\n  \n  let formattedOutput = '';\n  \n  // Step1: Special Rate\n  formattedOutput += '#### Step1: 1세대 1주택 특례세율 적용\\n';\n  formattedOutput += `계산 결과: ${formatCurrency(specialRateAmount)}\\n\\n`;\n  \n  // Step2: Fraud Reduction\n  formattedOutput += '#### Step2: 전세사기 감면 적용\\n';\n  formattedOutput += `계산 과정: ${fraudReductionAmount.toFixed(1)} → ${formatCurrency(Math.round(fraudReductionAmount))}\\n\\n`;\n  \n  // Step3: Comparison\n  formattedOutput += '#### Step3: 세액 비교\\n';\n  formattedOutput += `Step1의 ${formatCurrency(specialRateAmount)} VS Step2의 ${formatCurrency(Math.round(fraudReductionAmount))} 중 적은 값: ${formatCurrency(Math.min(specialRateAmount, Math.round(fraudReductionAmount)))}\\n\\n`;\n  \n  // Additional steps for tax burden ceiling, etc.\n  // ...\n  \n  return formattedOutput;\n}\n```\n\n7. Ensure all numeric values are properly formatted with thousands separators and Korean currency symbol (원)\n\n8. Verify that the output exactly matches the user's \"올바른 표기 모습\" format in all test cases",
+        "testStrategy": "1. Create unit tests for the updated formatting function:\n   ```typescript\n   describe('formatPropertyTaxCalculation', () => {\n     it('should correctly format Step1 with special rate value', () => {\n       const mockData = {\n         specialRateAmount: 45250,\n         fraudReductionAmount: 41437.5,\n         // other test data...\n       };\n       const result = formatPropertyTaxCalculation(mockData);\n       expect(result).toContain('#### Step1:');\n       expect(result).toContain('45,250원');\n     });\n     \n     it('should correctly format Step2 with fraud reduction value', () => {\n       const mockData = {\n         specialRateAmount: 45250,\n         fraudReductionAmount: 41437.5,\n         // other test data...\n       };\n       const result = formatPropertyTaxCalculation(mockData);\n       expect(result).toContain('#### Step2:');\n       expect(result).toContain('41.437.5 → 41,430원');\n     });\n     \n     it('should correctly format Step3 comparison text', () => {\n       const mockData = {\n         specialRateAmount: 45250,\n         fraudReductionAmount: 41437.5,\n         // other test data...\n       };\n       const result = formatPropertyTaxCalculation(mockData);\n       expect(result).toContain('Step1의 45,250원 VS Step2의 41,430원 중 적은 값: 41,430원');\n     });\n     \n     // Additional tests for other formatting requirements\n   });\n   ```\n\n2. Perform visual verification:\n   - Create a test page that displays the calculation results\n   - Compare the output with the user's \"올바른 표기 모습\" format\n   - Verify all formatting, spacing, and text matches exactly\n\n3. Test with various input values:\n   - Test with different property values to ensure formatting is consistent\n   - Test with edge cases (very large numbers, zero values, etc.)\n   - Verify rounding behavior is correct in all cases\n\n4. Integration testing:\n   - Verify the formatted output displays correctly in the actual UI\n   - Test the integration with the calculation logic\n   - Ensure the correct values are being passed to the formatting function\n\n5. Regression testing:\n   - Verify that other parts of the application are not affected by these changes\n   - Ensure the calculation logic itself remains correct despite display changes",
         "subtasks": [
           {
+            "id": 1,
+            "title": "Update formatCurrency function for consistent Korean currency formatting",
+            "description": "Implement a robust formatCurrency utility function that handles all Korean currency formatting requirements including thousands separators, rounding rules, and the '원' symbol.",
+            "status": "pending",
+            "dependencies": [],
+            "details": "Create or modify the formatCurrency function to: 1) Round numbers according to business rules, 2) Add thousands separators using toLocaleString('ko-KR'), 3) Append the '원' symbol, 4) Handle decimal formatting for display of calculation steps. This function will be used throughout the tax calculation display.",
+            "testStrategy": "Test with various numeric inputs including decimals, large numbers, and edge cases to ensure consistent formatting across all displays."
+          },
+          {
             "id": 2,
-            "title": "실제 UI에서 불일치 원인 추적",
-            "description": "브라우저에서 실제 계산 테스트를 수행하고 로깅을 통해 불일치 원인을 추적합니다.",
-            "status": "done",
+            "title": "Fix Step1 and Step2 value display and formatting",
+            "description": "Correct the display logic to show the special rate (45,250원) in Step1 and the fraud reduction amount (41,430원) in Step2 with proper formatting.",
+            "status": "completed",
             "dependencies": [
               1
             ],
-            "details": "1. 브라우저 개발자 도구를 활용한 실시간 값 추적 설정\n2. 다양한 입력값에 대해 계산 과정 전체를 로깅하는 코드 추가\n3. mainTaxCalculation.ts와 ResultsDisplay.tsx 양쪽에 동일한 로깅 포인트 설정\n4. 입력값 처리, 중간 계산 과정, 최종 출력값 등 모든 단계 추적\n5. 로그 분석을 통해 정확한 불일치 지점 식별\n<info added on 2025-06-25T20:55:52.414Z>\n6. 원 단위 내림 적용 시점 불일치 발견\n   - mainTaxCalculation.ts: 세율 적용 후 원 단위 내림 먼저 적용 후 건물소유비율 계산\n   - ResultsDisplay.tsx: 세율 적용 후 내림 없이 바로 건물소유비율 적용\n   - 해결: ResultsDisplay.tsx에 원 단위 내림 단계 추가하여 계산 순서 통일\n   - 수정 코드: 원 단위 내림(Math.floor) 적용 후 건물소유비율 계산하도록 변경\n</info added on 2025-06-25T20:55:52.414Z>",
-            "testStrategy": "실제 UI에서 다양한 입력값으로 테스트하고 콘솔 로그를 분석하여 불일치 지점을 정확히 파악합니다."
+            "details": "Update the formatPropertyTaxCalculation function to: 1) Display 45,250원 as the special rate in Step1, 2) Implement the exact format '41,437.5 → 41,430원' for the fraud reduction calculation in Step2, 3) Ensure decimal points and thousands separators are correctly formatted using the formatCurrency function.",
+            "testStrategy": "Verify that Step1 shows exactly 45,250원 and Step2 shows the calculation process with proper formatting of '41,437.5 → 41,430원'."
           },
           {
             "id": 3,
-            "title": "데이터 처리 흐름 분석",
-            "description": "입력값 처리부터 최종 출력까지의 전체 데이터 흐름을 분석합니다.",
-            "status": "done",
+            "title": "Implement consistent step header formatting",
+            "description": "Standardize all step headers to use the format '#### Step1:', '#### Step2:', etc. with consistent capitalization and spacing.",
+            "status": "pending",
+            "dependencies": [],
+            "details": "Update the formatPropertyTaxCalculation function to use consistent header formatting for all steps. Ensure each step header follows the exact format '#### StepN:' where N is the step number. Apply this formatting consistently across all steps in the calculation display.",
+            "testStrategy": "Check that all step headers in the output follow the specified format with correct numbering and consistent styling."
+          },
+          {
+            "id": 4,
+            "title": "Fix Step3 comparison text formatting",
+            "description": "Update the comparison text in Step3 to exactly match the required format with correct values from previous steps.",
+            "status": "completed",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Modify the Step3 section to display the comparison text in the exact format: 'Step1의 45,250원 VS Step2의 41,430원 중 적은 값: 41,430원'. Ensure the correct values are pulled from previous steps and maintain consistent formatting with Korean text. Use the formatCurrency function for all monetary values.",
+            "testStrategy": "Verify that the comparison text exactly matches the required format and correctly displays the minimum value between Step1 and Step2."
+          },
+          {
+            "id": 5,
+            "title": "Implement tax burden ceiling calculation display",
+            "description": "Update the tax burden ceiling calculation display to match the user's required format with proper formatting of all values.",
+            "status": "pending",
+            "dependencies": [
+              1,
+              3,
+              4
+            ],
+            "details": "Add or update the tax burden ceiling calculation section in the formatPropertyTaxCalculation function. Ensure correct calculation and presentation of the ceiling amount with appropriate separators and currency symbols using the formatCurrency function. Follow the same step header formatting pattern established in subtask 3.",
+            "testStrategy": "Test with various tax burden ceiling scenarios to ensure the calculation is correct and the display format matches the user's '올바른 표기 모습' requirements."
+          },
+          {
+            "id": 6,
+            "title": "Refine intermediate calculation display in Step1",
+            "description": "Enhance Step1 to show the intermediate calculation values as implemented in the recent update.",
+            "status": "pending",
             "dependencies": [
               2
             ],
-            "details": "1. 입력값 전처리 과정 분석 (소수점 처리, 단위 변환 등)\n2. 건물소유비율 적용 시점 및 방식 확인\n3. 10원 미만 절사 처리 시점 및 방식 확인\n4. 소액 징수면제(1,000원 미만) 처리 시점 및 방식 확인\n5. formatCurrency 등 표시 함수의 동작 방식 분석\n6. 각 단계별 처리 결과를 비교하여 불일치 지점 식별",
-            "testStrategy": "각 처리 단계별로 테스트 케이스를 작성하고, 동일한 입력에 대한 중간 결과값들을 비교합니다."
-          },
-          {
-            "id": 4,
-            "title": "공통 유틸리티 함수 구현",
-            "description": "두 파일에서 일관되게 사용할 수 있는 공통 유틸리티 함수를 구현합니다.",
-            "status": "done",
-            "dependencies": [
-              3
-            ],
-            "details": "1. 지역자원시설세 계산을 위한 공통 유틸리티 함수 구현\n2. 10원 미만 절사 처리를 위한 공통 함수 구현\n3. 소액 징수면제 처리를 위한 공통 함수 구현\n4. 세금 표시 포맷팅을 위한 공통 함수 구현\n5. 공통 함수를 별도 파일(예: taxUtils.ts)로 분리하여 코드 중복 방지",
-            "testStrategy": "구현된 유틸리티 함수들에 대한 단위 테스트를 작성하고, 다양한 입력값에 대해 예상 결과와 일치하는지 확인합니다."
-          },
-          {
-            "id": 5,
-            "title": "mainTaxCalculation.ts 파일 수정",
-            "description": "식별된 불일치 원인에 따라 mainTaxCalculation.ts 파일을 수정합니다.",
-            "status": "done",
-            "dependencies": [
-              4
-            ],
-            "details": "1. calculateRegionalResourceTax 함수에 공통 유틸리티 함수 적용\n2. 필요시 데이터 처리 흐름 수정 (전처리, 후처리 등)\n3. 명확한 주석 추가하여 처리 로직 문서화\n4. 로깅 코드 추가하여 계산 과정 추적 용이하게 개선\n5. 수정된 코드 검증",
-            "testStrategy": "수정된 함수에 대해 다양한 입력값으로 단위 테스트를 실행하고, 예상 결과값과 일치하는지 확인합니다."
-          },
-          {
-            "id": 6,
-            "title": "ResultsDisplay.tsx 파일 수정",
-            "description": "식별된 불일치 원인에 따라 ResultsDisplay.tsx 파일을 수정합니다.",
-            "status": "done",
-            "dependencies": [
-              4
-            ],
-            "details": "1. 민원인 설명란의 지역자원시설세 계산 코드에 공통 유틸리티 함수 적용\n2. 필요시 데이터 처리 흐름 수정 (전처리, 후처리 등)\n3. 명확한 주석 추가하여 처리 로직 문서화\n4. 로깅 코드 추가하여 계산 과정 추적 용이하게 개선\n5. 수정된 코드 검증",
-            "testStrategy": "수정된 코드에 대해 다양한 입력값으로 테스트를 실행하고, mainTaxCalculation.ts의 결과와 일치하는지 확인합니다."
+            "details": "Update the Step1 display to show the full calculation process: \"= 75,250,000 × 0.1% - 30,000 × 100% = 45,250 → 45,250원\". Ensure proper formatting of all numeric values and mathematical operators. This builds upon the completed Step1 value display work.",
+            "testStrategy": "Verify that Step1 shows the complete calculation process with all intermediate values correctly formatted and the final result matching the expected 45,250원."
           },
           {
             "id": 7,
-            "title": "통합 테스트 및 검증",
-            "description": "수정된 코드의 통합 테스트를 수행하고 두 파일 간 계산 결과의 일치성을 검증합니다.",
-            "status": "done",
+            "title": "Verify and finalize all calculation display formats",
+            "description": "Perform a comprehensive review of all calculation displays to ensure they match the user's required format exactly.",
+            "status": "pending",
             "dependencies": [
+              1,
+              2,
+              3,
+              4,
               5,
               6
             ],
-            "details": "1. 다양한 과세표준 값(경계값 포함)에 대한 테스트 케이스 작성\n2. mainTaxCalculation.ts와 ResultsDisplay.tsx에서 동일한 입력에 대한 계산 결과 비교\n3. 모든 구간에서 두 계산 결과가 일치하는지 확인\n4. 사용자 인터페이스에서 표시되는 계산 결과와 설명이 일관되는지 검증\n5. 테스트 결과 문서화 및 코드 리뷰 요청",
-            "testStrategy": "자동화된 통합 테스트를 작성하고, 실제 UI에서 수동 테스트를 진행하여 사용자 경험 측면에서도 일관성을 검증합니다."
-          },
-          {
-            "id": 1,
-            "title": "현재 코드 불일치 상황 분석",
-            "description": "mainTaxCalculation.ts와 ResultsDisplay.tsx 간의 지역자원시설세 계산 방식 불일치를 분석합니다.",
-            "dependencies": [],
-            "details": "1. mainTaxCalculation.ts의 calculateRegionalResourceTax 함수 코드 검토\n2. ResultsDisplay.tsx의 민원인 설명란 코드 검토\n3. 두 파일에서 사용 중인 계산 방식의 차이점 문서화\n4. 간이세율 방식과 표준세율 방식(6단계 구간별 누진세율)의 차이점 정리\n5. 불일치로 인한 사용자 경험 문제점 식별\n<info added on 2025-06-25T20:52:25.917Z>\n## 코드 분석 결과\n\n1. **계산 방식 일치 확인**:\n   - taxCalculations.ts와 ResultsDisplay.tsx 모두 수학적으로 동일한 계산 방식 사용\n   - 간이세율 방식(`taxableStandard * 0.0005 - 600`)과 표준세율 방식(`2,400 + (taxableStandard - 6,000,000) * 0.0005`)은 수학적으로 동등함\n   - 예시 검증: 13,000,000원 기준 두 방식 모두 5,900원으로 계산됨\n\n2. **실제 불일치 원인 가능성**:\n   - 계산 로직 자체가 아닌 다른 요소에서 불일치 발생 가능성 확인 필요\n   - 건물소유비율 처리 방식 차이 검토\n   - 10원 미만 절사 타이밍 차이 검토\n   - 입력값 전처리 과정에서의 차이 검토\n\n3. **후속 조치 방향**:\n   - 계산 로직 통일보다는 데이터 처리 흐름 전체 검토 필요\n   - 동일 입력값에 대한 전체 프로세스 추적 테스트 구현 고려\n</info added on 2025-06-25T20:52:25.917Z>",
-            "status": "done",
-            "testStrategy": "두 파일의 코드를 검토하고 동일한 입력값에 대한 계산 결과를 비교하여 불일치 정도를 측정합니다."
+            "details": "Review all calculation displays to ensure consistency and exact matching with the user's \"올바른 표기 모습\" format. Check for: 1) Correct step numbering and headers, 2) Proper decimal and thousands separator formatting, 3) Consistent use of the Korean currency symbol (원), 4) Correct display of calculation processes with intermediate values, 5) Proper spacing and formatting of Korean text.",
+            "testStrategy": "Create a comprehensive test suite that verifies all aspects of the display format against the user's requirements. Include edge cases and various input values to ensure consistent formatting across all scenarios."
           }
         ]
       },
       {
-        "id": 16,
-        "title": "지역자원시설세 임대주택 감면 적용 오류 수정",
-        "description": "지역자원시설세는 임대주택 감면 적용 대상이 아님에도 세액 계산 결과에서 감면이 적용되는 오류를 수정합니다.",
-        "status": "done",
+        "id": 12,
+        "title": "전세사기 감면 세액 계산 과정 표시 형식 완전 수정",
+        "description": "전세사기 감면 선택 시 세액 계산 과정 표시 형식을 사용자 요구사항에 맞게 완전히 수정하여 Step1부터 Step5까지의 올바른 순서와 의미로 재구현합니다.",
+        "details": "1. 세액 계산 과정 표시 형식을 사용자 요구사항에 맞게 완전히 수정:\n   - Step1: 표준세율 + 전세사기 감면 = 41,430원 (전세사기 감면을 적용한 계산)\n   - Step2: 특례세율 (감면 없음) = 45,250원 (1세대 1주택 특례세율 적용)\n   - Step3: Step1(41,430원) vs Step2(45,250원) 중 적은 값 선택 = 41,430원\n   - Step4: 세부담상한제 적용 = 42,140원\n   - Step5: Step3(41,430원) vs Step4(42,140원) 중 적은 값 선택 = 41,430원\n\n2. 계산 로직 수정:\n```typescript\nfunction displayTaxCalculationSteps(calculationData) {\n  const {\n    standardTaxAmount,\n    fraudReductionAmount,\n    specialRateAmount,\n    taxBurdenCapAmount,\n    finalTaxAmount,\n    previousYearTax,\n    taxBurdenCapRate\n  } = calculationData;\n  \n  // Step1: 표준세율 + 전세사기 감면\n  const step1 = {\n    title: 'Step1: 표준세율 + 전세사기 감면',\n    value: fraudReductionAmount,\n    formula: `${formatNumber(standardTaxAmount)} × ${(1 - fraudReductionRate).toFixed(2)} = ${formatNumber(fraudReductionAmount)}원`\n  };\n  \n  // Step2: 특례세율 (감면 없음)\n  const step2 = {\n    title: 'Step2: 특례세율 (감면 없음)',\n    value: specialRateAmount,\n    formula: `${formatNumber(specialRateAmount)}원`\n  };\n  \n  // Step3: Step1 vs Step2 중 적은 값 선택\n  const step3Value = Math.min(fraudReductionAmount, specialRateAmount);\n  const step3 = {\n    title: 'Step3: Step1 vs Step2 중 적은 값 선택',\n    value: step3Value,\n    formula: `${formatNumber(fraudReductionAmount)}원 vs ${formatNumber(specialRateAmount)}원 = ${formatNumber(step3Value)}원`\n  };\n  \n  // Step4: 세부담상한제 적용\n  const step4 = {\n    title: 'Step4: 세부담상한제 적용',\n    value: taxBurdenCapAmount,\n    formula: `${formatNumber(previousYearTax)} × ${taxBurdenCapRate.toFixed(2)} = ${formatNumber(taxBurdenCapAmount)}원`\n  };\n  \n  // Step5: Step3 vs Step4 중 적은 값 선택\n  const step5 = {\n    title: 'Step5: Step3 vs Step4 중 적은 값 선택',\n    value: finalTaxAmount,\n    formula: `${formatNumber(step3Value)}원 vs ${formatNumber(taxBurdenCapAmount)}원 = ${formatNumber(finalTaxAmount)}원`\n  };\n  \n  return {\n    steps: [step1, step2, step3, step4, step5],\n    finalTaxAmount\n  };\n}\n```\n\n3. UI 컴포넌트 수정:\n```tsx\nconst TaxCalculationDisplay = ({ calculationData }) => {\n  const { steps, finalTaxAmount } = displayTaxCalculationSteps(calculationData);\n  \n  return (\n    <div className=\"tax-calculation-display\">\n      <h3>세액 계산 과정</h3>\n      {steps.map((step, index) => (\n        <div key={index} className=\"calculation-step\">\n          <div className=\"step-title\">{step.title}</div>\n          <div className=\"step-formula\">{step.formula}</div>\n        </div>\n      ))}\n      <div className=\"final-tax\">\n        <strong>최종 세액: {formatNumber(finalTaxAmount)}원</strong>\n      </div>\n    </div>\n  );\n};\n```\n\n4. 숫자 포맷팅 함수 확인 및 수정:\n```typescript\nfunction formatNumber(value) {\n  // 소수점 이하 반올림 후 천 단위 콤마 추가\n  return Math.round(value).toLocaleString('ko-KR');\n}\n```\n\n5. 기존 Task 11에서 언급된 문제점 해결:\n   - Step1과 Step2의 값 혼동 문제 수정\n   - 계산식 표시 형식 정확히 구현\n   - 올바른 반올림 및 천 단위 구분자 적용",
+        "testStrategy": "1. 단위 테스트 작성:\n```typescript\ndescribe('displayTaxCalculationSteps', () => {\n  it('should display steps in the correct order with proper values', () => {\n    const mockData = {\n      standardTaxAmount: 55000,\n      fraudReductionAmount: 41430,\n      specialRateAmount: 45250,\n      taxBurdenCapAmount: 42140,\n      finalTaxAmount: 41430,\n      previousYearTax: 38310,\n      taxBurdenCapRate: 1.1,\n      fraudReductionRate: 0.25\n    };\n    \n    const result = displayTaxCalculationSteps(mockData);\n    \n    expect(result.steps[0].title).toContain('Step1');\n    expect(result.steps[0].value).toBe(41430);\n    \n    expect(result.steps[1].title).toContain('Step2');\n    expect(result.steps[1].value).toBe(45250);\n    \n    expect(result.steps[2].title).toContain('Step3');\n    expect(result.steps[2].value).toBe(41430);\n    \n    expect(result.steps[3].title).toContain('Step4');\n    expect(result.steps[3].value).toBe(42140);\n    \n    expect(result.steps[4].title).toContain('Step5');\n    expect(result.steps[4].value).toBe(41430);\n    \n    expect(result.finalTaxAmount).toBe(41430);\n  });\n  \n  it('should handle cases where special rate is better than fraud reduction', () => {\n    const mockData = {\n      standardTaxAmount: 60000,\n      fraudReductionAmount: 48000,\n      specialRateAmount: 45000,\n      taxBurdenCapAmount: 44000,\n      finalTaxAmount: 44000,\n      previousYearTax: 40000,\n      taxBurdenCapRate: 1.1,\n      fraudReductionRate: 0.2\n    };\n    \n    const result = displayTaxCalculationSteps(mockData);\n    expect(result.steps[2].value).toBe(45000); // Step3 should choose specialRateAmount\n    expect(result.steps[4].value).toBe(44000); // Step5 should choose taxBurdenCapAmount\n  });\n});\n```\n\n2. 통합 테스트:\n   - 실제 UI에서 계산 과정이 올바르게 표시되는지 확인\n   - 다양한 시나리오에서 각 단계별 표시가 올바르게 작동하는지 검증\n     - 표준세율+감면이 유리한 경우\n     - 특례세율이 유리한 경우\n     - 세부담상한제가 적용되는 경우\n\n3. 사용자 시나리오 테스트:\n   - 사용자 요구사항에 명시된 예시 값으로 테스트 케이스 작성\n   - 각 단계별 계산 결과가 예상값과 일치하는지 확인\n   - 최종 세액이 올바르게 계산되는지 확인\n\n4. 시각적 검증:\n   - 디자인 요구사항에 맞게 UI가 구현되었는지 확인\n   - 모바일 및 데스크톱 환경에서 레이아웃이 올바르게 표시되는지 확인\n   - 접근성 검사 수행",
+        "status": "pending",
         "dependencies": [
-          15
+          11
         ],
         "priority": "high",
-        "details": "1. 현재 상황 분석\n   - 코드 분석 결과, mainTaxCalculation.ts 파일(588-632번 라인)에서 지역자원시설세 계산 시 임대주택 감면 로직이 적용되지 않음\n   - ResultsDisplay.tsx 파일(353번 라인)에서 \"지역자원시설세는 임대주택 감면 적용 대상이 아님\"으로 올바르게 표시됨\n   - 그러나 사용자가 실제 '세액 계산 결과'에서 감면이 적용되는 것을 확인했다고 보고함\n\n2. 추가 조사 필요 사항\n   - 실제 브라우저에서 테스트하여 UI에 표시되는 계산 결과 확인\n   - 계산된 세액과 화면에 표시되는 세액 사이에 불일치가 있는지 확인\n   - 다른 컴포넌트나 렌더링 과정에서 값이 변경되는지 확인\n\n3. 가능한 문제 영역 검토\n   - 계산된 세액 값이 UI로 전달되는 과정에서 변형 가능성 확인\n   - 세액 표시 전 데이터 가공 로직 검토\n   - 다른 세금 계산 결과와 혼동되어 표시되는지 확인\n\n4. 수정 방향\n   - 계산 로직은 올바른 것으로 보이므로, UI 렌더링 과정 중심으로 조사\n   - 세액 계산 결과가 화면에 표시되기까지의 데이터 흐름 추적\n   - 필요시 UI 컴포넌트에서 지역자원시설세 표시 로직 수정\n\n5. 민원인 설명란과 실제 계산 결과 일치성 확인\n   - 민원인 설명란의 \"지역자원시설세는 임대주택 감면 적용 대상이 아님\" 문구 유지\n   - 실제 계산 결과에서도 감면이 적용되지 않도록 확인",
-        "testStrategy": "1. 임대주택 감면 미적용 단위 테스트\n```typescript\ntest('지역자원시설세에 임대주택 감면이 적용되지 않음', () => {\n  // 테스트 데이터 설정\n  const standardPrice = 50000000;\n  const isRentalHouse = true;\n  \n  // 지역자원시설세 계산\n  const calculatedTax = calculateRegionalResourceTax(standardPrice, isRentalHouse);\n  \n  // 임대주택 감면이 적용되지 않은 예상 결과 계산\n  const expectedTax = calculateRegionalResourceTaxWithoutDiscount(standardPrice);\n  \n  // 결과 비교\n  expect(calculatedTax).toEqual(expectedTax);\n});\n```\n\n2. 데이터 흐름 추적 테스트\n```typescript\ntest('계산된 지역자원시설세가 UI에 올바르게 전달되는지 확인', () => {\n  // 테스트 데이터 설정\n  const standardPrice = 50000000;\n  const isRentalHouse = true;\n  \n  // 지역자원시설세 계산\n  const calculatedTax = calculateRegionalResourceTax(standardPrice, isRentalHouse);\n  \n  // 계산 결과를 UI 데이터로 변환하는 함수 호출\n  const uiData = prepareUIData({\n    regionalResourceTax: calculatedTax,\n    isRentalHouse,\n    // 기타 필요한 데이터\n  });\n  \n  // UI 데이터에서 지역자원시설세 값 확인\n  expect(uiData.regionalResourceTax).toEqual(calculatedTax);\n});\n```\n\n3. UI 표시 일치성 테스트\n```typescript\ntest('UI에서 지역자원시설세 임대주택 감면 미적용 확인', async () => {\n  // 테스트 환경 설정\n  const { getByText, getByTestId } = render(<TaxCalculationResult \n    propertyValue={100000000}\n    isRentalHouse={true}\n    // 기타 필요한 props\n  />);\n  \n  // 민원인 설명란에서 지역자원시설세 감면 미적용 문구 확인\n  expect(getByText(/지역자원시설세는 임대주택 감면 적용 대상이 아님/)).toBeInTheDocument();\n  \n  // 계산 결과에서 임대주택 감면이 적용되지 않은 세액 확인\n  const displayedTax = getByTestId('regional-resource-tax-amount').textContent;\n  const expectedTax = formatCurrency(calculateRegionalResourceTaxWithoutDiscount(100000000));\n  \n  expect(displayedTax).toEqual(expectedTax);\n});\n```\n\n4. 브라우저 환경 테스트\n   - 실제 브라우저에서 다양한 가격대와 조건으로 테스트 수행\n   - 개발자 도구를 사용하여 계산된 세액 값과 표시된 값 비교\n   - 네트워크 요청/응답에서 데이터 변형 여부 확인\n\n5. 수동 테스트 시나리오\n   - 임대주택으로 설정된 다양한 가격대의 주택에 대해 세금 계산 실행\n   - 민원인 설명란과 세액 계산 결과 비교\n   - 지역자원시설세에 임대주택 감면이 적용되지 않는지 확인\n   - 다른 세금(재산세, 지방교육세 등)에는 임대주택 감면이 여전히 적용되는지 확인",
         "subtasks": [
           {
             "id": 1,
-            "title": "실제 브라우저에서 지역자원시설세 계산 결과 확인",
-            "description": "다양한 조건(가격대, 임대주택 여부 등)으로 실제 브라우저에서 테스트하여 UI에 표시되는 지역자원시설세 계산 결과를 확인합니다.",
-            "status": "done",
+            "title": "수정된 세액 계산 단계 로직 구현",
+            "description": "전세사기 감면 세액 계산 과정의 Step1부터 Step5까지의 로직을 요구사항에 맞게 수정합니다.",
             "dependencies": [],
-            "details": "<info added on 2025-06-25T21:03:05.523Z>\n**디버깅 로그 추가 완료:**\n\n1. **mainTaxCalculation.ts**: 지역자원시설세 계산 과정의 주요 변수들을 콘솔에 출력하도록 로그 추가\n2. **ResultsDisplay.tsx**: 민원인 설명란에서 계산된 지역자원시설세와 실제 결과값 비교 로그 추가\n\n**추가된 로그 정보:**\n- 🔍 지역자원시설세 계산 디버그: 감면 타입, 감면율, 계산 과정의 중간값들\n- 📊 민원인 설명란 지역자원시설세 계산: 두 계산 결과 비교 및 일치 여부\n\n**다음 단계:**\n브라우저에서 실제 계산을 실행하여 콘솔 로그를 확인하고, 지역자원시설세에 임대주택 감면이 적용되는지 검증해보겠습니다. 특히 임대주택으로 설정된 주택의 경우 감면이 지역자원시설세에 영향을 주는지 확인할 예정입니다.\n</info added on 2025-06-25T21:03:05.523Z>",
-            "testStrategy": ""
+            "details": "1. displayTaxCalculationSteps 함수를 수정하여 각 단계별 계산 로직 구현\n2. Step1: 표준세율에 전세사기 감면율을 적용한 계산 구현\n3. Step2: 특례세율 적용 계산 구현\n4. Step3: Step1과 Step2 중 적은 값 선택 로직 구현\n5. Step4: 세부담상한제 적용 로직 구현\n6. Step5: Step3와 Step4 중 적은 값 선택 로직 구현\n7. 각 단계별 계산식과 결과값 포맷팅 적용",
+            "status": "pending",
+            "testStrategy": "다양한 입력값(표준세율, 특례세율, 전년도 세액 등)으로 각 단계별 계산 결과가 예상대로 나오는지 테스트"
           },
           {
             "id": 2,
-            "title": "계산된 세액과 표시되는 세액 간 불일치 원인 파악",
-            "description": "계산 로직에서 도출된 세액 값과 UI에 최종 표시되는 세액 값 사이에 불일치가 있는지 확인하고, 있다면 그 원인을 파악합니다.",
-            "status": "done",
-            "dependencies": [],
-            "details": "",
-            "testStrategy": ""
+            "title": "숫자 포맷팅 함수 개선",
+            "description": "세액 계산 과정에서 사용되는 숫자 포맷팅 함수를 개선하여 정확한 반올림과 천 단위 구분자를 적용합니다.",
+            "dependencies": [
+              1
+            ],
+            "details": "1. formatNumber 함수 개선\n2. 소수점 이하 반올림 로직 확인 및 수정\n3. 천 단위 콤마 구분자 적용 방식 검증\n4. 한국 로케일(ko-KR) 적용 확인\n5. 다양한 숫자 케이스(큰 숫자, 소수점 포함 숫자 등)에 대한 처리 검증",
+            "status": "pending",
+            "testStrategy": "다양한 숫자 값(정수, 소수점 포함, 큰 숫자 등)에 대해 포맷팅 결과 검증"
           },
           {
             "id": 3,
-            "title": "UI 렌더링 과정에서 데이터 변형 여부 확인",
-            "description": "계산된 지역자원시설세 값이 UI 컴포넌트로 전달되는 과정에서 변형되는지 확인합니다. ResultsDisplay.tsx 및 관련 컴포넌트의 데이터 흐름을 추적합니다.",
-            "status": "done",
-            "dependencies": [],
-            "details": "",
-            "testStrategy": ""
+            "title": "계산 단계별 표시 형식 구현",
+            "description": "각 계산 단계(Step1~Step5)의 표시 형식을 요구사항에 맞게 구현합니다.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "1. 각 단계별 title 형식 구현 (예: 'Step1: 표준세율 + 전세사기 감면')\n2. 각 단계별 formula 형식 구현 (계산식과 결과값 표시)\n3. 계산식에 사용되는 값들의 포맷팅 적용\n4. 각 단계별 결과값 명확히 표시\n5. 비교 연산(vs)이 필요한 단계에서 올바른 비교 형식 적용",
+            "status": "pending",
+            "testStrategy": "각 단계별 표시 형식이 요구사항과 일치하는지 시각적으로 검증"
           },
           {
             "id": 4,
-            "title": "필요시 UI 컴포넌트 수정",
-            "description": "문제가 발견된 경우, UI 컴포넌트에서 지역자원시설세 표시 로직을 수정합니다.",
-            "status": "done",
-            "dependencies": [],
-            "details": "",
-            "testStrategy": ""
+            "title": "UI 컴포넌트 수정 및 스타일링",
+            "description": "세액 계산 과정을 표시하는 UI 컴포넌트를 수정하고 스타일링합니다.",
+            "dependencies": [
+              3
+            ],
+            "details": "1. TaxCalculationDisplay 컴포넌트 수정\n2. 계산 단계별 표시 레이아웃 구현\n3. 단계 제목과 계산식을 구분하여 표시\n4. 최종 세액 강조 표시\n5. 각 단계별 시각적 구분을 위한 스타일링 적용\n6. 반응형 디자인 고려하여 모바일 환경에서도 잘 보이도록 구현",
+            "status": "pending",
+            "testStrategy": "다양한 화면 크기에서 UI 컴포넌트가 올바르게 표시되는지 확인"
           },
           {
             "id": 5,
-            "title": "수정사항 테스트 및 검증",
-            "description": "수정된 코드를 테스트하여 지역자원시설세에 임대주택 감면이 적용되지 않는지 확인하고, 민원인 설명란과 실제 계산 결과가 일치하는지 검증합니다.",
-            "status": "done",
-            "dependencies": [],
-            "details": "",
-            "testStrategy": ""
-          }
-        ]
-      },
-      {
-        "id": 17,
-        "title": "지역자원시설세 세액 계산 결과 불일치 문제 해결",
-        "description": "민원인 설명란과 세액 계산 결과에 표시되는 지역자원시설세 금액 불일치 문제를 분석하고 수정합니다.",
-        "status": "done",
-        "dependencies": [
-          15,
-          16
-        ],
-        "priority": "high",
-        "details": "1. 불일치 문제 분석\n   - 민원인 설명란의 지역자원시설세 계산은 정확하지만 세액 계산 결과에서는 부정확한 상황 확인\n   - 두 화면에서 사용하는 데이터 소스와 계산 로직 차이점 분석\n   - 문제 원인: ResultsDisplay.tsx에서는 표준세율 방식을 사용하고, taxCalculations.ts에서는 간이세율 방식을 사용함\n\n2. 코드 검토 및 문제 영역 식별\n   - mainTaxCalculation.ts의 지역자원시설세 계산 로직 검토\n   - taxCalculations.ts의 calculateRegionalResourceTax 함수 검토 (간이세율 방식 사용)\n   - ResultsDisplay.tsx 831-940줄의 regionalBaseTaxAmount 계산 부분 검토 (표준세율 방식 사용)\n   - 두 계산 방식 간의 차이점 분석 및 문서화\n\n3. 세율 적용 정확성 검증\n   - 현재 적용 중인 세율과 제공된 기준 세율 비교\n   - 표준세율 방식 vs 간이세율 방식 비교:\n     * 표준세율 방식 (ResultsDisplay.tsx): 600만원 초과 1,300만원 이하: 2,400원 + (600만원 초과금액 × 5/10,000)\n     * 간이세율 방식 (taxCalculations.ts): 600만원 초과 1,300만원 이하: 과세표준 × 0.05% - 600원\n   - 두 방식이 수학적으로 동일함을 확인\n\n4. 데이터 흐름 추적\n   - 계산된 지역자원시설세 값이 UI 컴포넌트로 전달되는 과정 추적\n   - 데이터 변환 또는 포맷팅 과정에서 발생할 수 있는 오류 식별\n\n5. 수정 구현\n   ```typescript\n   // ResultsDisplay.tsx 831-940줄 수정 - 간이세율 방식으로 통일\n   let regionalBaseTaxAmount = 0;\n   let regionalTaxCalculationDesc = \"\";\n   \n   if (standardPrice <= 6000000) {\n     regionalBaseTaxAmount = standardPrice * 0.0004;\n     regionalTaxCalculationDesc = `과세표준 ${formatCurrency(standardPrice)} × 0.04%`;\n   } else if (standardPrice <= 13000000) {\n     regionalBaseTaxAmount = standardPrice * 0.0005 - 600;\n     regionalTaxCalculationDesc = `과세표준 ${formatCurrency(standardPrice)} × 0.05% - 600원`;\n   } else if (standardPrice <= 26000000) {\n     regionalBaseTaxAmount = standardPrice * 0.0006 - 1900;\n     regionalTaxCalculationDesc = `과세표준 ${formatCurrency(standardPrice)} × 0.06% - 1,900원`;\n   } else if (standardPrice <= 39000000) {\n     regionalBaseTaxAmount = standardPrice * 0.0008 - 7100;\n     regionalTaxCalculationDesc = `과세표준 ${formatCurrency(standardPrice)} × 0.08% - 7,100원`;\n   } else if (standardPrice <= 64000000) {\n     regionalBaseTaxAmount = standardPrice * 0.001 - 14900;\n     regionalTaxCalculationDesc = `과세표준 ${formatCurrency(standardPrice)} × 0.1% - 14,900원`;\n   } else {\n     regionalBaseTaxAmount = standardPrice * 0.0012 - 27700;\n     regionalTaxCalculationDesc = `과세표준 ${formatCurrency(standardPrice)} × 0.12% - 27,700원`;\n   }\n   \n   // 10원 미만 절사 처리\n   const regionalResourceTax = Math.floor(regionalBaseTaxAmount / 10) * 10;\n   ```\n\n6. 일관성 확보\n   - 민원인 설명란과 세액 계산 결과에서 동일한 계산 로직(간이세율 방식) 사용 보장\n   - 필요시 공통 유틸리티 함수로 추출하여 재사용\n   - 계산 과정 설명도 간이세율 방식으로 통일",
-        "testStrategy": "1. 다양한 과세표준 금액에 대한 지역자원시설세 계산 테스트\n   ```typescript\n   test('지역자원시설세 계산 정확성 테스트', () => {\n     const testCases = [\n       { standardPrice: 5000000, expected: 2000 },  // 600만원 이하: 0.04%\n       { standardPrice: 10000000, expected: 4400 }, // 600만원 초과~1,300만원 이하: 0.05%-600원\n       { standardPrice: 20000000, expected: 10100 }, // 1,300만원 초과~2,600만원 이하: 0.06%-1,900원\n       { standardPrice: 30000000, expected: 16900 }, // 2,600만원 초과~3,900만원 이하: 0.08%-7,100원\n       { standardPrice: 50000000, expected: 35100 }, // 3,900만원 초과~6,400만원 이하: 0.1%-14,900원\n       { standardPrice: 70000000, expected: 56300 }, // 6,400만원 초과: 0.12%-27,700원\n     ];\n     \n     testCases.forEach(({ standardPrice, expected }) => {\n       const result = calculateRegionalResourceTax(standardPrice);\n       expect(Math.floor(result / 10) * 10).toBe(expected);\n     });\n   });\n   ```\n\n2. UI 표시 일관성 테스트\n   ```typescript\n   test('민원인 설명란과 세액 계산 결과의 지역자원시설세 일치 테스트', async () => {\n     // 테스트 데이터 설정\n     const testData = {\n       publicPrice: 300000000,\n       units: 3,\n       // 기타 필요한 테스트 데이터\n     };\n     \n     // 애플리케이션 렌더링\n     render(<TaxCalculator initialData={testData} />);\n     \n     // 계산 버튼 클릭\n     fireEvent.click(screen.getByText('계산하기'));\n     await waitFor(() => screen.getByTestId('tax-results'));\n     \n     // 민원인 설명란의 지역자원시설세 값 가져오기\n     const explanationTax = screen.getByTestId('explanation-regional-tax').textContent;\n     \n     // 세액 계산 결과의 지역자원시설세 값 가져오기\n     const resultTax = screen.getByTestId('result-regional-tax').textContent;\n     \n     // 두 값이 일치하는지 확인 (통화 형식 제거 후 비교)\n     expect(extractNumberFromCurrency(explanationTax)).toBe(extractNumberFromCurrency(resultTax));\n   });\n   ```\n\n3. 표준세율 방식과 간이세율 방식의 동일성 테스트\n   ```typescript\n   test('표준세율 방식과 간이세율 방식 계산 결과 동일성 테스트', () => {\n     const testCases = [\n       { standardPrice: 10000000 }, // 600만원 초과~1,300만원 이하\n       { standardPrice: 20000000 }, // 1,300만원 초과~2,600만원 이하\n       { standardPrice: 30000000 }, // 2,600만원 초과~3,900만원 이하\n     ];\n     \n     testCases.forEach(({ standardPrice }) => {\n       // 표준세율 방식 계산 (이전 방식)\n       let standardMethodResult = 0;\n       if (standardPrice <= 6000000) {\n         standardMethodResult = standardPrice * 0.0004;\n       } else if (standardPrice <= 13000000) {\n         standardMethodResult = 2400 + ((standardPrice - 6000000) * 0.0005);\n       }\n       // ... 다른 구간 계산 생략\n       \n       // 간이세율 방식 계산 (새 방식)\n       let simplifiedMethodResult = 0;\n       if (standardPrice <= 6000000) {\n         simplifiedMethodResult = standardPrice * 0.0004;\n       } else if (standardPrice <= 13000000) {\n         simplifiedMethodResult = standardPrice * 0.0005 - 600;\n       }\n       // ... 다른 구간 계산 생략\n       \n       // 10원 미만 절사 처리 후 비교\n       expect(Math.floor(standardMethodResult / 10) * 10).toBe(Math.floor(simplifiedMethodResult / 10) * 10);\n     });\n   });\n   ```\n\n4. 회귀 테스트\n   - 지역자원시설세 수정이 다른 세금 계산에 영향을 미치지 않는지 확인\n   - 전체 세액 합계가 올바르게 계산되는지 확인",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "ResultsDisplay.tsx 지역자원시설세 계산 로직 수정",
-            "description": "ResultsDisplay.tsx 831-940줄의 지역자원시설세 계산 로직을 표준세율 방식에서 간이세율 방식으로 변경합니다.",
-            "status": "done",
-            "dependencies": [],
-            "details": "",
-            "testStrategy": ""
-          },
-          {
-            "id": 2,
-            "title": "계산 과정 설명 텍스트 업데이트",
-            "description": "지역자원시설세 계산 과정 설명을 간이세율 방식에 맞게 업데이트합니다.",
-            "status": "done",
-            "dependencies": [],
-            "details": "",
-            "testStrategy": ""
-          },
-          {
-            "id": 3,
-            "title": "표준세율과 간이세율 방식의 동일성 검증 테스트 작성",
-            "description": "두 계산 방식이 수학적으로 동일한 결과를 내는지 확인하는 테스트 코드를 작성합니다.",
-            "status": "done",
-            "dependencies": [],
-            "details": "",
-            "testStrategy": ""
-          },
-          {
-            "id": 4,
-            "title": "민원인 설명란과 세액 계산 결과 일치 확인",
-            "description": "수정 후 민원인 설명란과 세액 계산 결과에 표시되는 지역자원시설세 금액이 일치하는지 확인합니다.",
-            "status": "done",
-            "dependencies": [],
-            "details": "",
-            "testStrategy": ""
-          }
-        ]
-      },
-      {
-        "id": 18,
-        "title": "지역자원시설세 '세액 계산 결과' 0원 표시 오류 수정",
-        "description": "지역자원시설세 계산 결과가 올바르게 계산되지만 '세액 계산 결과' 화면에서 0원으로 잘못 표시되는 문제를 분석하고 수정합니다.",
-        "status": "done",
-        "dependencies": [
-          15,
-          17
-        ],
-        "priority": "high",
-        "details": "1. 문제 상황 분석\n   - 지역자원시설세 과세표준(20,800,488원)과 건물소유비율(100%)이 올바르게 입력되었으나 '세액 계산 결과'에 0원으로 표시됨\n   - '민원인 설명란'에는 정확한 계산 결과가 표시됨(10,580원)\n   - 올바른 계산: 20,800,488 × 0.06% - 1,900 = 10,580.2928원 → 10원 미만 절사 후 10,580원\n\n2. 코드 분석 및 문제 원인 파악\n   - mainTaxCalculation.ts 591줄에서 문제 발견:\n   ```typescript\n   const regionalResourceTaxStandard = safePropertyData.regionalResourceTaxStandard || 0;\n   ```\n   - 이 부분에서 regionalResourceTaxStandard 값이 제대로 전달되지 않아 0으로 설정되는 것으로 추정됨\n   \n   - PropertyData 타입에서 regionalResourceTaxStandard 필드 정의 확인 필요\n   ```typescript\n   // PropertyData 타입 정의 확인\n   interface PropertyData {\n     // regionalResourceTaxStandard 필드가 올바르게 정의되어 있는지 확인\n     regionalResourceTaxStandard?: number;\n     // 다른 필드들...\n   }\n   ```\n   \n   - taxCalculations.ts의 calculateRegionalResourceTax 함수 검토\n   ```typescript\n   // 현재 함수 구현 분석\n   function calculateRegionalResourceTax(standardPrice: number, ownershipRatio: number): number {\n     // 과세표준이 0으로 처리되거나 계산 결과가 표시되지 않는 원인 파악\n     // 가능성: \n     // 1. 과세표준이 함수에 0으로 전달됨\n     // 2. 계산 과정에서 값이 초기화됨\n     // 3. 결과 반환 시 조건부 로직에 의해 0이 반환됨\n   }\n   ```\n   \n   - ResultsDisplay.tsx에서 result.regionalResourceTax 표시 부분 검토\n   ```typescript\n   // 표시 로직 분석\n   // 조건부 렌더링이나 포맷팅 과정에서 0으로 변환되는지 확인\n   // 세액이 특정 조건(예: 1,000원 미만)에서 면제되는 로직이 있는지 확인\n   ```\n\n3. 디버깅 로그 추가 완료\n   - mainTaxCalculation.ts에 지역자원시설세 계산 과정의 모든 단계에 console.log 추가:\n   ```typescript\n   // 원본값 로깅\n   console.log('1. safePropertyData.regionalResourceTaxStandard 원본값:', safePropertyData.regionalResourceTaxStandard);\n   \n   // 최종값 로깅 (|| 0 적용 후)\n   const regionalResourceTaxStandard = safePropertyData.regionalResourceTaxStandard || 0;\n   console.log('2. regionalResourceTaxStandard 최종값:', regionalResourceTaxStandard);\n   \n   // 소유비율 로깅\n   console.log('3. buildingOwnershipRatio 값:', buildingOwnershipRatio);\n   \n   // 역산 결과 로깅\n   const fullOwnershipRegionalStandard = regionalResourceTaxStandard * (100 / buildingOwnershipRatio);\n   console.log('4. fullOwnershipRegionalStandard (역산 결과):', fullOwnershipRegionalStandard);\n   \n   // 세율 적용 결과 로깅\n   const fullOwnershipRegionalTax = fullOwnershipRegionalStandard * 0.0006 - 1900;\n   console.log('5. fullOwnershipRegionalTax (세율 적용 결과):', fullOwnershipRegionalTax);\n   \n   // 원 단위 내림 후 로깅\n   const flooredFullOwnershipRegionalTax = Math.floor(fullOwnershipRegionalTax);\n   console.log('6. flooredFullOwnershipRegionalTax (원 단위 내림 후):', flooredFullOwnershipRegionalTax);\n   \n   // 소유비율 적용 후 로깅\n   let regionalResourceTax = flooredFullOwnershipRegionalTax * (buildingOwnershipRatio / 100);\n   console.log('7. regionalResourceTax (소유비율 적용 후):', regionalResourceTax);\n   \n   // 최종 결과 로깅 (10원 미만 절사 후)\n   regionalResourceTax = Math.floor(regionalResourceTax / 10) * 10;\n   console.log('8. regionalResourceTax (최종, 10원 미만 절사 후):', regionalResourceTax);\n   ```\n\n4. 로그 분석 결과 및 핵심 문제 발견\n   - 다가구주택과 단독주택의 지역자원시설세 계산 로직이 다르게 처리됨\n   - 다가구주택: `multiUnits` 배열의 `regionalResourceTaxStandard`를 사용하여 정상 계산됨\n   ```\n   지역자원시설세 계산 (다가구주택): \n   - 과세표준: 20,800,488원\n   - 세율: 0.06% (1,300만원 초과 2,600만원 이하)\n   - 계산: 20,800,488 × 0.06% - 1,900 = 10,580.293원\n   - 최종: 10,580원\n   ```\n   - 단독주택: `propertyData.regionalResourceTaxStandard` 필드를 사용하는데, 이 값이 0으로 전달됨\n   ```\n   safePropertyData.regionalResourceTaxStandard: 0\n   regionalResourceTaxStandard (최종): 0\n   ```\n   - 사용자가 입력한 20,800,488원이 프론트엔드에서 백엔드로 제대로 전달되지 않는 것이 핵심 문제\n\n5. 문제 해결 방안 구현\n   - PropertyData 타입 정의 확인 및 수정\n   ```typescript\n   // PropertyData 인터페이스에 regionalResourceTaxStandard 필드가 명시적으로 정의되어 있는지 확인\n   interface PropertyData {\n     regionalResourceTaxStandard: number; // 옵셔널이 아닌 필수 필드로 변경 고려\n     // 다른 필드들...\n   }\n   ```\n   \n   - PropertyTaxCalculator.tsx에서 단독주택의 regionalResourceTaxStandard 필드 업데이트 로직 수정\n   ```typescript\n   // 단독주택 지역자원시설세 과세표준 설정 로직 확인 및 수정\n   // 예: 표준가격이나 다른 적절한 값을 사용하여 regionalResourceTaxStandard 설정\n   const updatedPropertyData = {\n     ...propertyData,\n     regionalResourceTaxStandard: propertyData.standardPrice || 0\n   };\n   ```\n   \n   - mainTaxCalculation.ts 591줄 수정\n   ```typescript\n   // 기존 코드\n   const regionalResourceTaxStandard = safePropertyData.regionalResourceTaxStandard || 0;\n   \n   // 수정된 코드 (예시)\n   // 다가구주택인 경우 다가구주택 계산 결과 사용, 단독주택인 경우 propertyData.regionalResourceTaxStandard 사용\n   const regionalResourceTaxStandard = safePropertyData.isMultiUnit ? \n     getMultiUnitRegionalResourceTaxStandard(safePropertyData) : \n     (safePropertyData.regionalResourceTaxStandard || safePropertyData.standardPrice || 0);\n   \n   console.log('지역자원시설세 과세표준 값:', regionalResourceTaxStandard);\n   ```\n\n6. 수정 후 검증\n   - 다양한 과세표준 금액에 대해 계산 결과가 올바르게 표시되는지 확인\n   - 특히 경계값(소액 면제 기준 근처 값)에 대한 테스트 수행\n   - 프론트엔드에서 백엔드로 전달되는 데이터에 regionalResourceTaxStandard 필드가 올바르게 포함되는지 확인\n   - 단독주택과 다가구주택 모두에서 지역자원시설세가 올바르게 계산되고 표시되는지 확인\n\n7. 핵심 문제 발견 및 해결\n   - 문제점: 다가구주택인 경우 지역자원시설세가 이미 323줄에서 계산되어 `regionalResourceTax = multiUnitRegionalResult.totalTax`로 설정되었는데, 590줄 근처에서 단독주택용 계산 로직이 다시 실행되어 0원으로 덮어씌워졌음\n   \n   - 해결 방법:\n     1. 함수 시작 부분에서 지역자원시설세 관련 변수들을 미리 선언\n     2. 590줄 근처의 지역자원시설세 계산 부분을 단독주택(`propertyType !== \"다가구주택\"`)인 경우에만 실행되도록 조건문 추가\n     3. 다가구주택인 경우에는 이미 계산된 값을 그대로 사용\n   \n   - 핵심 변경사항:\n   ```typescript\n   // 지역자원시설세는 다가구주택인 경우 이미 계산됨 (323줄에서 설정)\n   // 단독주택인 경우에만 별도 계산 수행\n   if (safePropertyData.propertyType !== \"다가구주택\") {\n     // 단독주택 계산 로직\n   } else {\n     console.log('다가구주택 지역자원시설세는 이미 계산됨:', regionalResourceTax);\n   }\n   ```",
-        "testStrategy": "1. 지역자원시설세 계산 및 표시 정확성 테스트\n   ```typescript\n   test('지역자원시설세 계산 및 표시 정확성 테스트', () => {\n     const testCases = [\n       { standardPrice: 20800488, ownershipRatio: 100, expected: 10580 }, // 문제 사례\n       { standardPrice: 10000000, ownershipRatio: 100, expected: 4100 },  // 일반 사례\n       { standardPrice: 5000000, ownershipRatio: 50, expected: 1000 },    // 소유비율 적용 사례\n       { standardPrice: 1000000, ownershipRatio: 100, expected: 400 }     // 소액 사례\n     ];\n     \n     for (const testCase of testCases) {\n       const result = calculateRegionalResourceTax(testCase.standardPrice, testCase.ownershipRatio);\n       expect(result).toBe(testCase.expected);\n     }\n   });\n   ```\n\n2. UI 표시 정확성 테스트\n   ```typescript\n   test('지역자원시설세 UI 표시 정확성 테스트', async () => {\n     // 테스트 데이터 설정\n     const testData = {\n       standardPrice: 20800488,\n       ownershipRatio: 100,\n       regionalResourceTaxStandard: 20800488 // 명시적으로 regionalResourceTaxStandard 설정\n     };\n     \n     // 컴포넌트 렌더링\n     render(<ResultsDisplay data={testData} />);\n     \n     // 세액 계산 결과에 올바른 값이 표시되는지 확인\n     const taxResultElement = screen.getByTestId('regional-resource-tax-result');\n     expect(taxResultElement.textContent).toContain('10,580원');\n     \n     // 민원인 설명란에도 동일한 값이 표시되는지 확인\n     const explanationElement = screen.getByTestId('regional-resource-tax-explanation');\n     expect(explanationElement.textContent).toContain('10,580원');\n   });\n   ```\n\n3. 데이터 흐름 통합 테스트\n   ```typescript\n   test('지역자원시설세 데이터 흐름 통합 테스트', () => {\n     // 입력 데이터 설정 - regionalResourceTaxStandard 명시적 포함\n     const inputData = {\n       standardPrice: 20800488,\n       ownershipRatio: 100,\n       regionalResourceTaxStandard: 20800488\n     };\n     \n     // mainTaxCalculation 함수 호출\n     const calculationResult = calculateTaxes(inputData);\n     \n     // 계산 결과에 지역자원시설세가 올바르게 포함되었는지 확인\n     expect(calculationResult.regionalResourceTax).toBe(10580);\n     \n     // UI 컴포넌트에 전달된 후에도 값이 유지되는지 확인\n     const { getByTestId } = render(<ResultsDisplay result={calculationResult} />);\n     const displayedValue = getByTestId('regional-resource-tax-display').textContent;\n     expect(displayedValue).toContain('10,580');\n   });\n   ```\n\n4. 주택 유형별 지역자원시설세 계산 테스트\n   ```typescript\n   test('주택 유형별 지역자원시설세 계산 테스트', () => {\n     // 단독주택 테스트\n     const singleHouseData = {\n       propertyType: 'single',\n       standardPrice: 20800488,\n       ownershipRatio: 100,\n       // regionalResourceTaxStandard 필드 의도적으로 생략\n     };\n     \n     // 다가구주택 테스트\n     const multiUnitHouseData = {\n       propertyType: '다가구주택',\n       standardPrice: 20800488,\n       ownershipRatio: 100,\n       multiUnits: [{\n         regionalResourceTaxStandard: 20800488\n       }]\n     };\n     \n     // 각 주택 유형별 계산 결과 확인\n     const singleHouseResult = calculateTaxes(singleHouseData);\n     const multiUnitHouseResult = calculateTaxes(multiUnitHouseData);\n     \n     // 두 경우 모두 동일한 결과가 나와야 함\n     expect(singleHouseResult.regionalResourceTax).toBe(10580);\n     expect(multiUnitHouseResult.regionalResourceTax).toBe(10580);\n   });\n   ```\n\n5. PropertyTaxCalculator 컴포넌트 테스트\n   ```typescript\n   test('PropertyTaxCalculator에서 regionalResourceTaxStandard 필드 설정 테스트', () => {\n     // 초기 데이터 설정 (regionalResourceTaxStandard 없음)\n     const initialData = {\n       standardPrice: 20800488,\n       ownershipRatio: 100\n     };\n     \n     // PropertyTaxCalculator 컴포넌트 렌더링\n     const { result } = renderHook(() => usePropertyTaxCalculator(initialData));\n     \n     // 계산 실행\n     act(() => {\n       result.current.calculateTax();\n     });\n     \n     // 계산 후 데이터에 regionalResourceTaxStandard 필드가 올바르게 추가되었는지 확인\n     expect(result.current.propertyData.regionalResourceTaxStandard).toBe(20800488);\n   });\n   ```\n\n6. 브라우저 환경 수동 테스트\n   - 실제 애플리케이션에서 단독주택과 다가구주택 각각에 대해 지역자원시설세 과세표준 20,800,488원, 건물소유비율 100%로 설정\n   - 두 경우 모두 '세액 계산 결과' 화면에서 지역자원시설세가 10,580원으로 올바르게 표시되는지 확인\n   - '민원인 설명란'과 '세액 계산 결과' 화면의 값이 일치하는지 확인\n   - 개발자 도구 콘솔에서 로그를 확인하여 regionalResourceTaxStandard 값이 올바르게 전달되는지 확인\n\n7. 다가구주택 계산 로직 덮어쓰기 방지 테스트\n   ```typescript\n   test('다가구주택 지역자원시설세 계산값이 덮어쓰이지 않는지 테스트', () => {\n     // 다가구주택 테스트 데이터\n     const multiUnitHouseData = {\n       propertyType: '다가구주택',\n       standardPrice: 20800488,\n       ownershipRatio: 100,\n       multiUnits: [{\n         regionalResourceTaxStandard: 20800488\n       }]\n     };\n     \n     // 계산 함수 호출\n     const result = calculateTaxes(multiUnitHouseData);\n     \n     // 다가구주택의 지역자원시설세가 올바르게 계산되었는지 확인\n     expect(result.regionalResourceTax).toBe(10580);\n     \n     // 로그 출력 확인 (모의 함수 사용)\n     expect(console.log).toHaveBeenCalledWith(\n       expect.stringContaining('다가구주택 지역자원시설세는 이미 계산됨'),\n       10580\n     );\n   });\n   ```",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "PropertyData 타입에서 regionalResourceTaxStandard 필드 정의 확인",
-            "description": "PropertyData 인터페이스에서 regionalResourceTaxStandard 필드가 올바르게 정의되어 있는지 확인하고, 필요시 수정합니다.",
-            "status": "done",
-            "dependencies": [],
-            "details": "",
-            "testStrategy": ""
-          },
-          {
-            "id": 2,
-            "title": "프론트엔드에서 regionalResourceTaxStandard 값 전달 확인",
-            "description": "프론트엔드 폼에서 백엔드로 데이터 전송 시 regionalResourceTaxStandard 필드가 올바르게 포함되는지 확인하고, 로깅을 추가하여 디버깅합니다.",
-            "status": "done",
-            "dependencies": [],
-            "details": "",
-            "testStrategy": ""
-          },
-          {
-            "id": 3,
-            "title": "mainTaxCalculation.ts 591줄 수정",
-            "description": "mainTaxCalculation.ts 591줄의 `const regionalResourceTaxStandard = safePropertyData.regionalResourceTaxStandard || 0;` 코드를 수정하여 regionalResourceTaxStandard 값이 없을 경우 적절한 대체 값을 사용하도록 합니다.",
-            "status": "done",
-            "dependencies": [],
-            "details": "1. 현재 코드 분석:\n   ```typescript\n   const regionalResourceTaxStandard = safePropertyData.regionalResourceTaxStandard || 0;\n   ```\n\n2. 수정할 코드:\n   ```typescript\n   // 다가구주택인 경우 다가구주택 계산 결과 사용, 단독주택인 경우 propertyData.regionalResourceTaxStandard 사용\n   const regionalResourceTaxStandard = safePropertyData.isMultiUnit ? \n     getMultiUnitRegionalResourceTaxStandard(safePropertyData) : \n     (safePropertyData.regionalResourceTaxStandard || safePropertyData.standardPrice || 0);\n   ```\n\n3. 필요한 경우 getMultiUnitRegionalResourceTaxStandard 함수 구현:\n   ```typescript\n   function getMultiUnitRegionalResourceTaxStandard(propertyData) {\n     // 다가구주택의 경우 multiUnits 배열에서 regionalResourceTaxStandard 값을 가져옴\n     if (propertyData.multiUnits && propertyData.multiUnits.length > 0) {\n       return propertyData.multiUnits.reduce((sum, unit) => sum + (unit.regionalResourceTaxStandard || 0), 0);\n     }\n     return 0;\n   }\n   ```\n\n4. 수정 후 로그 추가:\n   ```typescript\n   console.log('주택 유형:', safePropertyData.isMultiUnit ? '다가구주택' : '단독주택');\n   console.log('지역자원시설세 과세표준 값:', regionalResourceTaxStandard);\n   ```",
-            "testStrategy": "```typescript\ntest('주택 유형별 지역자원시설세 과세표준 설정 테스트', () => {\n  // 단독주택 테스트 (regionalResourceTaxStandard 없음, standardPrice만 있음)\n  const singleHouseData = {\n    isMultiUnit: false,\n    standardPrice: 20800488,\n    ownershipRatio: 100\n  };\n  \n  // 다가구주택 테스트\n  const multiUnitHouseData = {\n    isMultiUnit: true,\n    standardPrice: 20800488,\n    ownershipRatio: 100,\n    multiUnits: [{\n      regionalResourceTaxStandard: 20800488\n    }]\n  };\n  \n  // 수정된 함수 호출\n  const singleHouseStandard = getRegionalResourceTaxStandard(singleHouseData);\n  const multiUnitHouseStandard = getRegionalResourceTaxStandard(multiUnitHouseData);\n  \n  // 두 경우 모두 동일한 과세표준이 설정되어야 함\n  expect(singleHouseStandard).toBe(20800488);\n  expect(multiUnitHouseStandard).toBe(20800488);\n});\n```"
-          },
-          {
-            "id": 4,
-            "title": "ResultsDisplay.tsx에서 지역자원시설세 표시 로직 확인",
-            "description": "ResultsDisplay.tsx에서 지역자원시설세 결과를 표시하는 부분을 검토하고, 필요시 수정하여 계산된 값이 올바르게 표시되도록 합니다.",
-            "status": "done",
-            "dependencies": [],
-            "details": "",
-            "testStrategy": ""
-          },
-          {
-            "id": 5,
-            "title": "수정사항 테스트 및 검증",
-            "description": "수정된 코드가 다양한 입력값에 대해 올바르게 작동하는지 테스트하고, 특히 문제가 발생했던 사례(과세표준 20,800,488원)에서 정확히 10,580원이 표시되는지 확인합니다.",
-            "status": "done",
-            "dependencies": [],
-            "details": "",
-            "testStrategy": ""
-          },
-          {
-            "id": 6,
-            "title": "디버깅 로그 분석",
-            "description": "사용자가 애플리케이션에서 지역자원시설세 과세표준을 20,800,488원으로 입력하고 계산을 실행한 후, 콘솔 로그를 분석하여 문제의 정확한 원인을 파악합니다.",
-            "status": "done",
-            "dependencies": [],
-            "details": "1. 개발자 도구 콘솔에서 다음 로그 항목들을 확인:\n   - safePropertyData.regionalResourceTaxStandard 원본값\n   - regionalResourceTaxStandard 최종값 (|| 0 적용 후)\n   - buildingOwnershipRatio 값\n   - fullOwnershipRegionalStandard (역산 결과)\n   - fullOwnershipRegionalTax (세율 적용 결과)\n   - flooredFullOwnershipRegionalTax (원 단위 내림 후)\n   - regionalResourceTax (소유비율 적용 후)\n   - regionalResourceTax (최종, 10원 미만 절사 후)\n\n2. 로그 분석을 통해 어느 단계에서 값이 0으로 변경되는지 또는 잘못된 값이 사용되는지 파악\n\n3. 분석 결과를 바탕으로 정확한 문제 지점 식별",
-            "testStrategy": ""
-          },
-          {
-            "id": 7,
-            "title": "단독주택과 다가구주택의 지역자원시설세 계산 로직 비교",
-            "description": "단독주택과 다가구주택의 지역자원시설세 계산 로직을 비교하여 차이점을 파악하고, 단독주택에서 발생하는 문제를 해결합니다.",
-            "status": "done",
+            "title": "통합 테스트 및 버그 수정",
+            "description": "구현된 세액 계산 과정 표시 기능을 통합 테스트하고 발견된 버그를 수정합니다.",
             "dependencies": [
-              6
-            ],
-            "details": "1. 다가구주택 계산 로직 분석:\n   - multiUnits 배열의 regionalResourceTaxStandard 필드 사용 방식 확인\n   - 계산 과정 및 결과값 검증\n\n2. 단독주택 계산 로직 분석:\n   - propertyData.regionalResourceTaxStandard 필드 사용 방식 확인\n   - 값이 0으로 설정되는 원인 파악\n\n3. 두 로직의 차이점 식별 및 단독주택 로직 수정 방안 도출",
-            "testStrategy": "```typescript\ntest('단독주택과 다가구주택의 지역자원시설세 계산 로직 비교', () => {\n  // 동일한 과세표준과 소유비율로 두 주택 유형 테스트\n  const standardPrice = 20800488;\n  const ownershipRatio = 100;\n  \n  // 단독주택 데이터\n  const singleHouseData = {\n    propertyType: 'single',\n    standardPrice,\n    ownershipRatio,\n    regionalResourceTaxStandard: standardPrice\n  };\n  \n  // 다가구주택 데이터\n  const multiUnitHouseData = {\n    propertyType: 'multi',\n    standardPrice,\n    ownershipRatio,\n    multiUnits: [{\n      regionalResourceTaxStandard: standardPrice\n    }]\n  };\n  \n  // 각 계산 결과 비교\n  const singleResult = calculateTaxes(singleHouseData);\n  const multiResult = calculateTaxes(multiUnitHouseData);\n  \n  expect(singleResult.regionalResourceTax).toBe(multiResult.regionalResourceTax);\n  expect(singleResult.regionalResourceTax).toBe(10580);\n});\n```"
-          },
-          {
-            "id": 8,
-            "title": "PropertyTaxCalculator.tsx에서 단독주택 regionalResourceTaxStandard 설정 로직 수정",
-            "description": "PropertyTaxCalculator.tsx 컴포넌트에서 단독주택의 regionalResourceTaxStandard 필드가 올바르게 설정되도록 로직을 수정합니다.",
-            "status": "done",
-            "dependencies": [
-              7
-            ],
-            "details": "1. PropertyTaxCalculator.tsx 파일에서 단독주택 데이터 처리 부분 확인\n\n2. 단독주택의 경우 regionalResourceTaxStandard 필드가 설정되지 않는 원인 파악\n\n3. 다음과 같은 수정 구현:\n   ```typescript\n   // 기존 코드 (예시)\n   const handleCalculate = () => {\n     // 기존 로직...\n   };\n   \n   // 수정된 코드 (예시)\n   const handleCalculate = () => {\n     // 단독주택인 경우 regionalResourceTaxStandard 필드 명시적 설정\n     if (propertyData.propertyType === 'single') {\n       setPropertyData(prev => ({\n         ...prev,\n         regionalResourceTaxStandard: prev.standardPrice || 0\n       }));\n     }\n     \n     // 기존 로직 계속...\n   };\n   ```\n\n4. 수정된 로직이 단독주택과 다가구주택 모두에서 올바르게 작동하는지 확인",
-            "testStrategy": "```typescript\ntest('PropertyTaxCalculator에서 단독주택 regionalResourceTaxStandard 설정 테스트', () => {\n  // 단독주택 초기 데이터\n  const initialData = {\n    propertyType: 'single',\n    standardPrice: 20800488,\n    ownershipRatio: 100\n    // regionalResourceTaxStandard 필드 없음\n  };\n  \n  // 컴포넌트 렌더링\n  const { result } = renderHook(() => usePropertyTaxCalculator(initialData));\n  \n  // 계산 실행 전 확인\n  expect(result.current.propertyData.regionalResourceTaxStandard).toBeUndefined();\n  \n  // 계산 실행\n  act(() => {\n    result.current.handleCalculate();\n  });\n  \n  // 계산 후 regionalResourceTaxStandard 필드가 올바르게 설정되었는지 확인\n  expect(result.current.propertyData.regionalResourceTaxStandard).toBe(20800488);\n});\n```"
-          },
-          {
-            "id": 9,
-            "title": "주택 유형에 따른 지역자원시설세 계산 로직 통합",
-            "description": "다가구주택과 단독주택의 지역자원시설세 계산 로직을 통합하여 두 유형 모두에서 올바르게 작동하도록 수정합니다.",
-            "status": "done",
-            "dependencies": [
+              1,
+              2,
               3,
-              7,
-              8
+              4
             ],
-            "details": "1. mainTaxCalculation.ts에서 주택 유형에 따른 분기 처리 구현:\n   ```typescript\n   // 주택 유형에 따른 지역자원시설세 과세표준 설정 함수\n   function getRegionalResourceTaxStandard(propertyData) {\n     // 다가구주택인 경우\n     if (propertyData.isMultiUnit || propertyData.propertyType === 'multi') {\n       if (propertyData.multiUnits && propertyData.multiUnits.length > 0) {\n         return propertyData.multiUnits.reduce((sum, unit) => sum + (unit.regionalResourceTaxStandard || 0), 0);\n       }\n     }\n     \n     // 단독주택인 경우\n     return propertyData.regionalResourceTaxStandard || propertyData.standardPrice || 0;\n   }\n   \n   // 기존 코드 대체\n   // const regionalResourceTaxStandard = safePropertyData.regionalResourceTaxStandard || 0;\n   \n   // 수정된 코드\n   const regionalResourceTaxStandard = getRegionalResourceTaxStandard(safePropertyData);\n   ```\n\n2. 로그 추가로 주택 유형과 과세표준 값 확인:\n   ```typescript\n   console.log('주택 유형:', safePropertyData.isMultiUnit ? '다가구주택' : '단독주택');\n   console.log('지역자원시설세 과세표준 값:', regionalResourceTaxStandard);\n   ```\n\n3. 단독주택과 다가구주택 모두에서 동일한 과세표준 값이 사용되는지 확인",
-            "testStrategy": "```typescript\ntest('주택 유형에 따른 지역자원시설세 계산 통합 테스트', () => {\n  // 테스트 케이스 설정\n  const testCases = [\n    // 단독주택 - regionalResourceTaxStandard 있음\n    {\n      propertyType: 'single',\n      standardPrice: 20800488,\n      ownershipRatio: 100,\n      regionalResourceTaxStandard: 20800488,\n      expected: 10580\n    },\n    // 단독주택 - regionalResourceTaxStandard 없음 (standardPrice 사용)\n    {\n      propertyType: 'single',\n      standardPrice: 20800488,\n      ownershipRatio: 100,\n      expected: 10580\n    },\n    // 다가구주택\n    {\n      propertyType: 'multi',\n      isMultiUnit: true,\n      standardPrice: 20800488,\n      ownershipRatio: 100,\n      multiUnits: [{\n        regionalResourceTaxStandard: 20800488\n      }],\n      expected: 10580\n    }\n  ];\n  \n  // 각 케이스 테스트\n  for (const testCase of testCases) {\n    const result = calculateTaxes(testCase);\n    expect(result.regionalResourceTax).toBe(testCase.expected);\n  }\n});\n```"
-          },
-          {
-            "id": 10,
-            "title": "다가구주택 지역자원시설세 계산값 덮어쓰기 방지",
-            "description": "다가구주택의 경우 이미 323줄에서 계산된 지역자원시설세 값이 590줄 근처의 단독주택 계산 로직에 의해 덮어씌워지는 문제를 해결합니다.",
-            "status": "done",
-            "dependencies": [
-              6,
-              7
-            ],
-            "details": "1. mainTaxCalculation.ts 파일에서 지역자원시설세 계산 부분 수정:\n   ```typescript\n   // 함수 시작 부분에서 변수 선언\n   let regionalResourceTaxStandard = 0;\n   let regionalResourceTax = 0;\n   \n   // 323줄 근처의 다가구주택 계산 로직\n   if (safePropertyData.propertyType === \"다가구주택\") {\n     // 기존 다가구주택 계산 로직\n     const multiUnitRegionalResult = calculateMultiUnitRegionalResourceTax(/* 파라미터 */); \n     regionalResourceTax = multiUnitRegionalResult.totalTax;\n     console.log('다가구주택 지역자원시설세 계산 결과:', regionalResourceTax);\n   }\n   \n   // 590줄 근처의 단독주택 계산 로직\n   if (safePropertyData.propertyType !== \"다가구주택\") {\n     // 단독주택 계산 로직\n     regionalResourceTaxStandard = safePropertyData.regionalResourceTaxStandard || safePropertyData.standardPrice || 0;\n     console.log('단독주택 지역자원시설세 과세표준:', regionalResourceTaxStandard);\n     \n     // 기존 계산 로직\n     const fullOwnershipRegionalStandard = regionalResourceTaxStandard * (100 / buildingOwnershipRatio);\n     const fullOwnershipRegionalTax = fullOwnershipRegionalStandard * 0.0006 - 1900;\n     const flooredFullOwnershipRegionalTax = Math.floor(fullOwnershipRegionalTax);\n     regionalResourceTax = flooredFullOwnershipRegionalTax * (buildingOwnershipRatio / 100);\n     regionalResourceTax = Math.floor(regionalResourceTax / 10) * 10;\n     \n     console.log('단독주택 지역자원시설세 계산 결과:', regionalResourceTax);\n   } else {\n     console.log('다가구주택 지역자원시설세는 이미 계산됨:', regionalResourceTax);\n   }\n   ```\n\n2. 로그 추가로 계산 과정 확인:\n   ```typescript\n   console.log('최종 지역자원시설세:', regionalResourceTax);\n   ```\n\n3. 수정 후 다가구주택과 단독주택 모두에서 지역자원시설세가 올바르게 계산되는지 확인",
-            "testStrategy": "```typescript\ntest('다가구주택 지역자원시설세 계산값 덮어쓰기 방지 테스트', () => {\n  // 다가구주택 테스트 데이터\n  const multiUnitHouseData = {\n    propertyType: '다가구주택',\n    standardPrice: 20800488,\n    ownershipRatio: 100,\n    multiUnits: [{\n      regionalResourceTaxStandard: 20800488\n    }]\n  };\n  \n  // 계산 함수 호출\n  const result = calculateTaxes(multiUnitHouseData);\n  \n  // 다가구주택의 지역자원시설세가 올바르게 계산되었는지 확인\n  expect(result.regionalResourceTax).toBe(10580);\n});\n\ntest('단독주택 지역자원시설세 계산 테스트', () => {\n  // 단독주택 테스트 데이터\n  const singleHouseData = {\n    propertyType: '단독주택',\n    standardPrice: 20800488,\n    ownershipRatio: 100,\n    regionalResourceTaxStandard: 20800488\n  };\n  \n  // 계산 함수 호출\n  const result = calculateTaxes(singleHouseData);\n  \n  // 단독주택의 지역자원시설세가 올바르게 계산되었는지 확인\n  expect(result.regionalResourceTax).toBe(10580);\n});\n```"
+            "details": "1. 다양한 세액 계산 시나리오에 대한 통합 테스트 수행\n2. Task 11에서 언급된 문제점(Step1과 Step2의 값 혼동 등) 해결 확인\n3. 계산식 표시 형식의 정확성 검증\n4. 올바른 반올림 및 천 단위 구분자 적용 확인\n5. 발견된 버그 수정 및 재테스트\n6. 사용자 요구사항과의 일치성 최종 검증",
+            "status": "pending",
+            "testStrategy": "실제 사용 시나리오를 바탕으로 전체 기능 흐름 테스트 및 엣지 케이스 검증"
           }
         ]
       }
     ],
     "metadata": {
-      "created": "2025-06-23T21:02:29.547Z",
-      "updated": "2025-06-25T22:02:06.856Z",
-      "description": "Tasks for master context"
-    }
-  },
-  "remove-calc-steps": {
-    "tasks": [
-      {
-        "id": 1,
-        "title": "Remove CalculationSteps Component Import and References",
-        "description": "Remove all imports and references to the CalculationSteps component from the PropertyTaxCalculator.tsx file",
-        "details": "1. Open src/components/PropertyTaxCalculator.tsx\n2. Remove the import statement for CalculationSteps component\n3. Remove any JSX code that renders the CalculationSteps component\n4. Remove any props or data being passed to the CalculationSteps component\n5. Ensure the component still renders correctly without the removed section\n\nExample code change:\n```typescript\n// Before\nimport { CalculationSteps } from './CalculationSteps';\n\n// After\n// Import statement removed\n\n// Before (in render function)\nreturn (\n  <div>\n    {/* Other components */}\n    <ResultsDisplay results={results} />\n    <CalculationSteps data={calculationData} /> {/* This line needs to be removed */}\n  </div>\n);\n\n// After (in render function)\nreturn (\n  <div>\n    {/* Other components */}\n    <ResultsDisplay results={results} />\n    {/* CalculationSteps component removed */}\n  </div>\n);\n```\n<info added on 2025-06-26T20:08:33.592Z>\nTask completed:\n1. ✅ Removed CalculationSteps import statement (line 11)\n   - Removed `import CalculationSteps from \"./CalculationSteps\";`\n2. ✅ Removed CalculationSteps component rendering section (around line 2081)\n   - Removed `{/* 계산 단계 설명 */}` and `<CalculationSteps />`\n3. ✅ File compiles normally\n4. ✅ Confirmed no impact on other components or functionality\n\nChanges made:\n- Completely removed CalculationSteps-related code from PropertyTaxCalculator.tsx\n- Removed the calculation steps section that was between the FAQ component and the save button\n- Calculation logic and overall design remain unchanged\n</info added on 2025-06-26T20:08:33.592Z>",
-        "testStrategy": "1. Verify that the PropertyTaxCalculator.tsx file no longer imports the CalculationSteps component\n2. Verify that the PropertyTaxCalculator.tsx file no longer renders the CalculationSteps component\n3. Run the application and visually confirm that the 'Calculation Steps' section no longer appears at the bottom of the page\n4. Ensure the calculator still functions correctly by entering test values and verifying results are displayed correctly\n5. Check for any console errors that might indicate missing references",
-        "priority": "high",
-        "dependencies": [],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": 2,
-        "title": "Clean Up Unused CalculationSteps Component",
-        "description": "Remove the CalculationSteps.tsx file and any associated styles or tests",
-        "details": "1. Delete the src/components/CalculationSteps.tsx file\n2. Check for any associated test files (e.g., src/components/__tests__/CalculationSteps.test.tsx) and remove them\n3. Check for any specific styles for this component in CSS/SCSS files or Tailwind classes and remove if they're not used elsewhere\n4. If there are any types or interfaces specifically for the CalculationSteps component in separate files, remove those as well\n\nExample:\n```bash\n# Remove the component file\nrm src/components/CalculationSteps.tsx\n\n# Remove any test files if they exist\nrm src/components/__tests__/CalculationSteps.test.tsx\n```\n<info added on 2025-06-26T20:09:21.686Z>\n## Task Completion Report\n\n1. ✅ CalculationSteps.tsx 파일 삭제 완료\n2. ✅ 테스트 파일 없음 확인 (src/components/__tests__ 디렉토리 존재하지 않음)\n3. ✅ 프로젝트 빌드 성공 확인 (npm run build 성공)\n4. ✅ 컴파일 에러 없음 확인\n\n변경사항:\n- src/components/CalculationSteps.tsx 파일 완전 삭제\n- 빌드 프로세스에서 오류 없이 정상 동작\n- 불필요한 컴포넌트 정리 완료\n</info added on 2025-06-26T20:09:21.686Z>",
-        "testStrategy": "1. Verify that the CalculationSteps.tsx file has been deleted\n2. Verify that any associated test files have been deleted\n3. Run the build process to ensure there are no compilation errors related to missing imports\n4. Run any existing test suites to ensure all tests pass after the removal\n5. Check for any unused imports or variables in other files that might have been used with the CalculationSteps component",
-        "priority": "medium",
-        "dependencies": [
-          1
-        ],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": 3,
-        "title": "Verify Application Functionality and UI Consistency",
-        "description": "Test the application to ensure the calculator functions correctly after removing the calculation steps section and the UI remains consistent",
-        "details": "1. Run the application in development mode\n2. Test the property tax calculator with various inputs to ensure calculations still work correctly\n3. Verify that the UI layout adjusts properly after removing the calculation steps section\n4. Check for any spacing issues, unexpected margins, or layout problems that might have been caused by removing the section\n5. Ensure that the application is responsive on different screen sizes\n6. If needed, adjust any spacing or layout issues in the PropertyTaxCalculator.tsx file\n\nPossible adjustments in PropertyTaxCalculator.tsx:\n```typescript\n// If there are spacing issues after removal, you might need to adjust container padding or margins\n<div className=\"container mx-auto px-4 py-8\"> {/* Adjust padding as needed */}\n  {/* Calculator content */}\n</div>\n```\n<info added on 2025-06-26T20:09:55.205Z>\nVerification of Task Completion:\n1. ✅ Application runs normally (running on port 3002)\n2. ✅ Build process completed successfully (npm run build completed)\n3. ✅ No compilation errors\n4. ✅ Application accessible in browser\n5. ✅ UI layout functions as expected (CalculationSteps section removed)\n\nFinal Verification Items:\n- Successfully removed CalculationSteps import and rendering from PropertyTaxCalculator.tsx\n- CalculationSteps.tsx file deleted\n- Project builds and runs normally\n- Calculation logic and overall design maintained\n- Calculation steps section below FAQ section has been removed\n</info added on 2025-06-26T20:09:55.205Z>",
-        "testStrategy": "1. Test the calculator with multiple sets of input data and verify the results match expected values\n2. Test the application on different browsers (Chrome, Firefox, Safari) to ensure cross-browser compatibility\n3. Test the application on different devices and screen sizes to verify responsive design\n4. Perform visual regression testing by comparing screenshots before and after the change\n5. Verify that no console errors appear during normal operation\n6. Have another team member review the changes to ensure nothing was missed",
-        "priority": "medium",
-        "dependencies": [
-          1,
-          2
-        ],
-        "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": 4,
-        "title": "Fix Property Tax Rate Display for Single-Household Single-Home Selection",
-        "description": "Correct the display text in the '3. Property Tax Base Calculation' section to show 'Special Rate Applied' instead of 'Standard Rate Applied' when the single-household single-home option is selected.",
-        "details": "1. Locate the component that displays the property tax calculation process, likely in the PropertyTaxCalculator.tsx file.\n\n2. Find the section that renders the '3. Property Tax Base Calculation' information, specifically where the tax rate type is displayed.\n\n3. Modify the conditional logic to display the correct rate type text:\n\n```typescript\n// Example implementation (adjust based on actual code structure)\nconst taxRateTypeText = isSingleHouseholdSingleHome \n  ? '특례세율 적용' // 'Special Rate Applied'\n  : '표준세율 적용'; // 'Standard Rate Applied'\n```\n\n4. Ensure that only the display text is changed, and the actual calculation logic remains unchanged.\n\n5. If the text is stored in a constants file or internationalization resource, update it there instead.\n\n6. Check for any other places in the UI that might reference the tax rate type to ensure consistency.\n\n7. The change should only affect the display label, not the actual tax rate calculation or any other functionality.\n\n8. Update any relevant tooltips or help text that might explain the tax rate application.\n<info added on 2025-06-26T20:31:05.470Z>\n## Task Completion Report\n\n🎯 Problem Analysis:\n- Even when the single-household single-home option was selected, the '3. Property Tax Base Calculation' section incorrectly displayed \"Standard Rate Applied\"\n- The actual calculation was correctly applying the special rate, but the UI display was wrong\n\n✅ Changes Made:\n1. Modified lines 633-643 in ResultsDisplay.tsx file\n2. Added conditional logic to the 'Applied Tax Rate' display:\n   - Created isSpecialRateApplicable variable to determine if special rate applies for single-household single-home\n   - Condition: propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000 && propertyData.propertyType !== \"다가구주택\"\n   - When special rate applies: Display \"Special Rate Applied\" + tax rate tier explanation\n   - When standard rate applies: Continue displaying \"Standard Rate Applied\"\n\n🔍 Updated Display Content:\n- Single-household single-home + Under 900 million won → \"Special Rate Applied\" + tier-based rate information\n- Other cases → \"Standard Rate Applied\" + existing standard rate information\n\n✅ Verification:\n- Confirmed successful npm run build\n- No compilation errors\n- Calculation logic remains unchanged (only UI display was modified)\n</info added on 2025-06-26T20:31:05.470Z>",
-        "testStrategy": "1. Run the application in development mode.\n\n2. Test the property tax calculator with the single-household single-home option both selected and unselected.\n\n3. Verify that when the single-household single-home option is selected, the text '특례세율 적용' ('Special Rate Applied') appears in the '3. Property Tax Base Calculation' section.\n\n4. Verify that when the single-household single-home option is not selected, the text '표준세율 적용' ('Standard Rate Applied') appears.\n\n5. Confirm that the calculation results remain unchanged from before the fix, ensuring only the display text was modified.\n\n6. Test with various property values to ensure the correct text displays consistently in all scenarios.\n\n7. Check for any visual layout issues that might have been introduced by the text change (e.g., if the new text is longer and causes wrapping).\n\n8. Perform cross-browser testing to ensure the text displays correctly in different browsers.\n\n9. Test the application on different devices and screen sizes to verify the text displays properly on all viewports.",
-        "status": "done",
-        "dependencies": [
-          3
-        ],
-        "priority": "high",
-        "subtasks": []
-      },
-      {
-        "id": 5,
-        "title": "Update Property Tax Rate Display with Legal Terminology and Dual Rate Format",
-        "description": "Modify the property tax calculation display to show both special and simplified tax rates for each tax bracket using legally accurate terminology, improving user understanding while maintaining the existing calculation logic.",
-        "details": "1. Locate the property tax calculation display component in the codebase, likely in PropertyTaxCalculator.tsx or a related component.\n\n2. Identify the section that displays the \"적용 세율\" (Applied Tax Rate) information within the \"3. 재산세 본세 계산\" (3. Property Tax Base Calculation) section.\n\n3. Update the tax rate display to show both special rates and simplified rates for each tax bracket using legally accurate terminology:\n\n```typescript\n// Example implementation (adjust based on actual code structure)\nconst renderTaxRateInformation = () => {\n  return (\n    <div className=\"tax-rate-info\">\n      <h4>적용 세율</h4>\n      <table className=\"tax-rate-table\">\n        <thead>\n          <tr>\n            <th>과세표준</th>\n            <th>특례세율</th>\n            <th>간이세율</th>\n          </tr>\n        </thead>\n        <tbody>\n          <tr>\n            <td>6천만원 이하</td>\n            <td>0.05%</td>\n            <td>0.05%</td>\n          </tr>\n          <tr>\n            <td>6천만원 초과 1억5천만원 이하</td>\n            <td>6만원+6천만원 초과금액의 0.1%</td>\n            <td>0.07%</td>\n          </tr>\n          <tr>\n            <td>1억5천만원 초과 3억원 이하</td>\n            <td>15만원+1억5천만원 초과금액의 0.2%</td>\n            <td>0.15%</td>\n          </tr>\n          <tr>\n            <td>3억원 초과</td>\n            <td>45만원+3억원 초과금액의 0.4%</td>\n            <td>0.23%</td>\n          </tr>\n        </tbody>\n      </table>\n      <p className=\"tax-rate-note\">※ 1세대 1주택자는 특례세율이 적용됩니다.</p>\n    </div>\n  );\n};\n```\n\n4. Ensure the display is responsive and maintains proper formatting on different screen sizes.\n\n5. Update any tooltips or help text to explain the difference between special rates and simplified rates.\n\n6. Maintain the existing calculation logic - only the display format is being changed.\n\n7. If there are any unit tests for the tax rate display, update them to reflect the new format.\n<info added on 2025-06-26T20:39:40.721Z>\n## Task Completion Report\n\n🎯 Problem Solved:\n- Fixed issue where the \"Applied Tax Rate\" explanation in \"3. Property Tax Base Calculation\" was displayed too simply when \"1 household 1 house\" option was selected\n\n✅ Modifications:\n1. Modified lines 640-647 in ResultsDisplay.tsx file\n2. Changed the special tax rate display to match legal terminology in detail:\n\nBefore:\n- Simple tax rate display (e.g., Below 60 million won: 0.05%)\n\nAfter:\n- Accurate legal notation for tax rates by bracket:\n  • Tax base 60,000,000 won or less → Special rate: 0.5/1,000 (Simplified rate: Tax base × 0.05%)\n  • Tax base exceeding 60,000,000 won up to 150,000,000 won → Special rate: 30,000 won + 1/1,000 of amount exceeding 60,000,000 won (Simplified rate: Tax base × 0.1% - 30,000 won)\n  • Tax base exceeding 150,000,000 won up to 300,000,000 won → Special rate: 120,000 won + 2/1,000 of amount exceeding 150,000,000 won (Simplified rate: Tax base × 0.2% - 180,000 won)\n  • Tax base exceeding 300,000,000 won → Special rate: 420,000 won + 3.5/1,000 of amount exceeding 300,000,000 won (Simplified rate: Tax base × 0.35% - 630,000 won)\n\n🔍 Improvements:\n- Users can now understand exact legal tax rates with both formal notation and simplified rates displayed\n- Applied bullet points and appropriate spacing for better readability\n- Clearly distinguished display by tax base brackets\n\n✅ Verification:\n- Confirmed successful npm run build\n- No compilation errors\n- Calculation logic maintained (only UI display modified for detail)\n</info added on 2025-06-26T20:39:40.721Z>",
-        "testStrategy": "1. Run the application in development mode.\n\n2. Navigate to the property tax calculator section.\n\n3. Select the \"1세대 1주택\" (single-household single-home) option.\n\n4. Verify that the \"적용 세율\" section now displays both special rates and simplified rates in a clear, tabular format.\n\n5. Verify that the legal terminology used matches the official tax regulations.\n\n6. Test with different property values to ensure the tax brackets are displayed correctly.\n\n7. Verify that the calculation results remain unchanged from before the modification.\n\n8. Test the responsive design by viewing the table on different screen sizes (desktop, tablet, mobile).\n\n9. Verify that the table is accessible and properly formatted for screen readers.\n\n10. Check that any tooltips or explanatory text correctly describe the difference between the rate types.\n\n11. Run any existing unit tests to ensure they pass with the updated display format.",
-        "status": "done",
-        "dependencies": [
-          4
-        ],
-        "priority": "high",
-        "subtasks": []
-      },
-      {
-        "id": 6,
-        "title": "Improve Special Tax Rate Text Styling for Single-Household Single-Home Option",
-        "description": "Change the special tax rate explanation text from blue (text-blue-600) to black color and increase the font size by 2 points while maintaining the existing calculation logic.",
-        "details": "1. Locate the component that displays the special tax rate information when the single-household single-home option is selected, likely in PropertyTaxCalculator.tsx.\n\n2. Find the specific text element that currently uses the text-blue-600 Tailwind class for the special tax rate explanation.\n\n3. Modify the styling by:\n   - Removing the `text-blue-600` class to revert to the default black text color\n   - Adding appropriate Tailwind classes to increase the font size by 2 points\n   \n   Example code change:\n   ```tsx\n   // Before\n   <p className=\"text-blue-600 text-sm\">\n     특례세율 적용: 1세대 1주택에 대한 재산세 감면\n   </p>\n   \n   // After\n   <p className=\"text-base\">\n     특례세율 적용: 1세대 1주택에 대한 재산세 감면\n   </p>\n   ```\n   \n   Note: The exact class names may vary depending on your current implementation. If using `text-sm` (14px), change to `text-base` (16px). If using `text-xs` (12px), change to `text-sm` (14px).\n\n4. Ensure that only the text styling is changed and that the calculation logic remains untouched.\n\n5. Check that the layout accommodates the larger text size without causing any display issues.\n<info added on 2025-06-26T20:43:27.979Z>\n## Implementation Completed\n\nThe special tax rate text styling has been successfully updated in the ResultsDisplay.tsx file:\n\n1. Modified line 645 in ResultsDisplay.tsx\n2. CSS class changes:\n   - Before: `text-xs text-blue-600 space-y-1`\n   - After: `text-sm text-black space-y-1`\n\n### Specific Changes:\n- Color changed from blue (`text-blue-600`) to black (`text-black`)\n- Font size increased by 2 points: `text-xs` (12px) → `text-sm` (14px)\n- Maintained existing spacing with `space-y-1` class\n\n### Affected Text Content:\nThe styling changes were applied to the special tax rate explanations for all threshold levels:\n- For tax base ≤ 60,000,000 won\n- For tax base > 60,000,000 won and ≤ 150,000,000 won\n- For tax base > 150,000,000 won and ≤ 300,000,000 won\n- For tax base > 300,000,000 won\n\n### Verification:\n- Build completed successfully (npm run build)\n- No compilation errors\n- Calculation logic remains unchanged\n- Improved readability with black text and larger font size\n</info added on 2025-06-26T20:43:27.979Z>",
-        "testStrategy": "1. Run the application in development mode.\n\n2. Navigate to the property tax calculator section.\n\n3. Select the \"1세대 1주택\" (single-household single-home) option.\n\n4. Verify that the special tax rate explanation text now appears in black color instead of blue.\n\n5. Confirm that the font size has increased by 2 points compared to the previous version.\n\n6. Ensure that the text is properly aligned and doesn't cause any layout issues with the increased size.\n\n7. Test with different screen sizes to ensure the text remains properly formatted on mobile and desktop views.\n\n8. Verify that the calculation results remain unchanged when compared to the previous version, confirming that only the styling was modified.\n\n9. Take screenshots before and after the change for documentation purposes.",
-        "status": "done",
-        "dependencies": [
-          5
-        ],
-        "priority": "medium",
-        "subtasks": []
-      },
-      {
-        "id": 7,
-        "title": "Update Tax Rate Display for Non-Single-Household Property Owners",
-        "description": "Modify the tax rate explanation in the '3. Property Tax Base Calculation' section to use legally accurate terminology and display both standard and simplified tax rates when \"1세대 1주택\" (single-household single-home) option is set to \"No\".",
-        "details": "1. Locate the property tax calculation display component, likely in PropertyTaxCalculator.tsx.\n\n2. Find the section that displays the \"적용 세율\" (Applied Tax Rate) information within the \"3. 재산세 본세 계산\" (3. Property Tax Base Calculation) section when the user selects \"아니오\" (No) for the single-household single-home option.\n\n3. Update the tax rate display to show both standard rates and simplified rates for each tax bracket using legally accurate terminology:\n\n```typescript\n// Example implementation (adjust based on actual code structure)\nconst renderTaxRateExplanation = () => {\n  if (isSingleHouseholdSingleHome) {\n    // Existing special rate display logic (already implemented in Task 5)\n    return specialRateExplanation;\n  } else {\n    // New standard rate display with both standard and simplified rates\n    return (\n      <div className=\"mt-2\">\n        <p className=\"font-medium\">적용 세율 (표준세율 및 간이세율)</p>\n        <table className=\"w-full mt-1 text-sm border-collapse\">\n          <thead>\n            <tr className=\"bg-gray-100\">\n              <th className=\"p-1 border\">과세표준</th>\n              <th className=\"p-1 border\">표준세율</th>\n              <th className=\"p-1 border\">간이세율</th>\n            </tr>\n          </thead>\n          <tbody>\n            <tr>\n              <td className=\"p-1 border\">6천만원 이하</td>\n              <td className=\"p-1 border\">0.1%</td>\n              <td className=\"p-1 border\">과세표준 × 0.1%</td>\n            </tr>\n            <tr>\n              <td className=\"p-1 border\">6천만원 초과 1억5천만원 이하</td>\n              <td className=\"p-1 border\">6만원 + 6천만원 초과금액의 0.15%</td>\n              <td className=\"p-1 border\">과세표준 × 0.15% - 3만원</td>\n            </tr>\n            <tr>\n              <td className=\"p-1 border\">1억5천만원 초과 3억원 이하</td>\n              <td className=\"p-1 border\">19만5천원 + 1억5천만원 초과금액의 0.25%</td>\n              <td className=\"p-1 border\">과세표준 × 0.25% - 18만원</td>\n            </tr>\n            <tr>\n              <td className=\"p-1 border\">3억원 초과</td>\n              <td className=\"p-1 border\">57만원 + 3억원 초과금액의 0.4%</td>\n              <td className=\"p-1 border\">과세표준 × 0.4% - 63만원</td>\n            </tr>\n          </tbody>\n        </table>\n        <p className=\"mt-1 text-sm text-gray-600\">※ 지방세법 제111조 제1항에 따른 세율 적용</p>\n      </div>\n    );\n  }\n};\n```\n\n4. Ensure the styling is consistent with the special tax rate display implemented in Task 5.\n\n5. Maintain the existing calculation logic - this change only affects the display of information, not the actual tax calculations.\n\n6. Make sure the text is clear and formatted in a way that makes it easy for users to understand the different tax rates that apply to their situation.\n<info added on 2025-06-26T21:27:13.979Z>\nTask completed:\n\nThe task has been successfully implemented according to the requirements:\n\n1. Modified the tax rate explanation in ResultsDisplay.tsx (lines 653-668) in the else block for standard tax rate display.\n\n2. Updated the tax rate display from a simple format to a legally accurate format showing both standard and simplified rates:\n\nBefore:\n- Simple bracket descriptions (e.g., \"Tax base under 600 million won: 1.0/1,000\")\n\nAfter:\n- Legally accurate terminology with both standard and simplified rates:\n  • Tax base ≤ 60,000,000 won → Standard rate: 1/1,000 (Simplified rate: Tax base × 0.1%)\n  • Tax base > 60,000,000 won and ≤ 150,000,000 won → Standard rate: 60,000 won + 1.5/1,000 of amount exceeding 60,000,000 won (Simplified rate: Tax base × 0.15% - 30,000 won)\n  • Tax base > 150,000,000 won and ≤ 300,000,000 won → Standard rate: 195,000 won + 2.5/1,000 of amount exceeding 150,000,000 won (Simplified rate: Tax base × 0.25% - 180,000 won)\n  • Tax base > 300,000,000 won → Standard rate: 570,000 won + 4/1,000 of amount exceeding 300,000,000 won (Simplified rate: Tax base × 0.4% - 630,000 won)\n\nImprovements:\n- Displayed both standard and simplified tax rates for better user understanding\n- Applied consistent styling with the special tax rate display (text-sm text-black)\n- Used bullet points and proper spacing for improved readability\n- Clearly separated tax brackets for easier comprehension\n- Maintained calculation logic while enhancing the display\n\nVerification:\n- Build successful (npm run build)\n- No compilation errors\n- Calculation logic remains unchanged (only display formatting was modified)\n- Consistent display format between \"Yes\" (special rate) and \"No\" (standard rate) options\n</info added on 2025-06-26T21:27:13.979Z>",
-        "testStrategy": "1. Run the application in development mode.\n\n2. Navigate to the property tax calculator section.\n\n3. Select \"아니오\" (No) for the \"1세대 1주택\" (single-household single-home) option.\n\n4. Verify that the \"적용 세율\" section now displays both standard rates and simplified rates in a clear, tabular format.\n\n5. Confirm that the tax rates are displayed using legally accurate terminology.\n\n6. Check that the table is properly formatted and easy to read.\n\n7. Verify that the calculation results remain the same as before the UI changes.\n\n8. Test with different property values to ensure the display works correctly across all tax brackets.\n\n9. Ensure the UI is responsive and displays correctly on different screen sizes.\n\n10. Toggle between \"예\" (Yes) and \"아니오\" (No) for the single-household option to verify that the appropriate tax rate explanation is shown in each case.",
-        "status": "done",
-        "dependencies": [
-          5
-        ],
-        "priority": "high",
-        "subtasks": []
-      }
-    ],
-    "metadata": {
-      "created": "2025-06-26T20:06:59.971Z",
-      "updated": "2025-06-26T21:27:19.571Z",
-      "description": "Tasks for remove-calc-steps context"
+      "created": "2025-06-27T21:39:44.646Z",
+      "updated": "2025-06-27T22:52:07.578Z",
+      "description": "Tasks for fraud-lease-calculation context"
     }
   }
 }

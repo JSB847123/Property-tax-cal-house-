@@ -187,6 +187,47 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
             explanation += `- 60㎡ 초과로 재산세 본세만 감면 적용 (도시지역분 감면 제외)\n`;
           }
         }
+      } else if (propertyData.reductionType === "전세사기 감면" && propertyData.currentYearReductionRate > 0 && propertyData.isSingleHousehold) {
+        // 전세사기 감면 상세 계산 과정 표시
+        explanation += `- ${propertyData.reductionType} 적용 (재산세 본세에만)\n`;
+        explanation += `\n### 적용 세율\n`;
+        explanation += `**특례세율 적용**\n`;
+        explanation += `1세대 1주택자 특례세율 (주택공시가격 9억원 이하)\n`;
+        explanation += `• 과세표준이 60,000,000원 이하 → 특례세율: 1,000분의 0.5(간이세율: 과세표준 × 0.05%)\n`;
+        explanation += `• 과세표준이 60,000,000원 초과 150,000,000원 이하 → 특례세율: 30,000원＋60,000,000원 초과금액의 1,000분의 1(간이세율: 과세표준 × 0.1% - 30,000원)\n`;
+        explanation += `• 과세표준이 150,000,000원 초과 300,000,000원 이하 → 특례세율: 120,000원 + 150,000,000원 초과금액의 1,000분의 2(간이세율: 과세표준 × 0.2% - 180,000원)\n`;
+        explanation += `• 과세표준이 300,000,000원 초과 → 특례세율: 420,000원＋300,000,000원 초과금액의 1,000분의 3.5(간이세율: 과세표준액 × 0.35% - 630,000원)\n`;
+        
+        explanation += `\n### Step1. 과세표준을 적용한 계산\n`;
+        explanation += `#### Step1: 최종 과세표준 × 특례세율 × 재산소유비율\n`;
+        const step1Amount = Math.floor((result.specialRateAmount * (propertyData.ownershipRatio / 100)) / 10) * 10;
+        explanation += `= ${formatCurrency(result.taxableStandard)} × 0.1% - 30,000 × ${propertyData.ownershipRatio}% = ${formatCurrency(step1Amount)}원\n`;
+        
+        explanation += `\n#### Step2. 전세사기 감면을 50% 적용\n`;
+        explanation += `과세표준 × 표준세율 × 전세사기 감면율 × 재산소유비율\n`;
+        const step2Amount = Math.floor((result.standardRateAmount * (1 - propertyData.currentYearReductionRate / 100) * (propertyData.ownershipRatio / 100)) / 10) * 10;
+        explanation += `= (${formatCurrency(result.taxableStandard)} × 0.15% - 30,000) × 전세사기 감면율 × ${propertyData.ownershipRatio}% = ${formatCurrency(step2Amount)}원\n`;
+        
+        explanation += `\n#### Step3. 과세표준을 적용한 계산 VS 전세사기 감면을 적용한 계산\n`;
+        explanation += `Step1의 ${formatCurrency(step1Amount)}원 VS Step2의 ${formatCurrency(step2Amount)}원 중 적은 값: ${formatCurrency(Math.min(step1Amount, step2Amount))}원\n`;
+        
+        if (propertyData.previousYear.actualPaidTax > 0) {
+          const taxBurdenCapAmount = Math.floor((propertyData.previousYear.actualPaidTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10;
+          explanation += `\n#### Step4. 세부담상한제 적용한 세액 확인\n`;
+          explanation += `전년도 재산세 본세 ${formatCurrency(propertyData.previousYear.actualPaidTax)}원\n`;
+          explanation += `${formatCurrency(propertyData.previousYear.actualPaidTax)} + (${formatCurrency(propertyData.previousYear.actualPaidTax)} × ${propertyData.taxBurdenCapRate - 100}%) = ${formatCurrency(propertyData.previousYear.actualPaidTax)} + ${formatCurrency(Math.floor((propertyData.previousYear.actualPaidTax * ((propertyData.taxBurdenCapRate - 100) / 100)) / 10) * 10)} = ${formatCurrency(taxBurdenCapAmount)}원\n`;
+          explanation += `\n#### Step5. 세액 비교 및 선택\n`;
+          explanation += `최종 재산세 본세 선택\n`;
+          explanation += `Step3에서 선택된 세액 VS 세부담상한제 적용한 세액\n`;
+          explanation += `${formatCurrency(Math.min(step1Amount, step2Amount))}원 vs ${formatCurrency(taxBurdenCapAmount)}원\n`;
+          explanation += `최종 선택: ${formatCurrency(result.propertyTax)}원(더 적은 금액)\n`;
+          explanation += `\n#### Step6. 최종 재산세 본세\n`;
+          explanation += `${formatCurrency(result.propertyTax)}원\n`;
+        } else {
+          explanation += `\n#### Step4. 최종 재산세 본세\n`;
+          explanation += `${formatCurrency(result.propertyTax)}원\n`;
+        }
+        explanation += `\n※ 기본 세액(소유비율 적용 전): ${formatCurrency(Math.floor(result.specialRateAmount / 10) * 10)}원\n`;
       } else if ((propertyData.reductionType === "전세사기 감면" || propertyData.reductionType === "노후연금") && propertyData.currentYearReductionRate > 0) {
         explanation += `- ${propertyData.reductionType} 적용 (재산세 본세에만): 감면율 ${propertyData.currentYearReductionRate}%\n`;
       }
@@ -671,7 +712,76 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                 <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-200">
                   <span className="text-sm text-charcoal-600 block mb-2">과세표준을 적용한 계산</span>
                   {(() => {
-                    // 올바른 기본 세액 사용 - specialRateAmount 또는 standardRateAmount 중 적용된 것 사용
+                    // 전세사기 감면 특별 처리
+                    if (propertyData.reductionType === "전세사기 감면" && propertyData.currentYearReductionRate > 0 && propertyData.isSingleHousehold) {
+                      return (
+                        <div className="text-gray-700 space-y-4">
+                          {/* 적용 세율 정보 */}
+                          <div className="bg-white p-3 rounded border border-emerald-200">
+                            <h4 className="font-semibold text-gray-800 mb-2">적용 세율</h4>
+                            <p className="font-medium text-gray-700 mb-1">특례세율 적용</p>
+                            <p className="text-sm text-gray-600">1세대 1주택자 특례세율 (주택공시가격 9억원 이하)</p>
+                            <div className="text-xs text-gray-500 mt-1 space-y-1">
+                              <p>• 과세표준이 60,000,000원 이하 → 특례세율: 1,000분의 0.5(간이세율: 과세표준 × 0.05%)</p>
+                              <p>• 과세표준이 60,000,000원 초과 150,000,000원 이하 → 특례세율: 30,000원＋60,000,000원 초과금액의 1,000분의 1(간이세율: 과세표준 × 0.1% - 30,000원)</p>
+                              <p>• 과세표준이 150,000,000원 초과 300,000,000원 이하 → 특례세율: 120,000원 + 150,000,000원 초과금액의 1,000분의 2(간이세율: 과세표준 × 0.2% - 180,000원)</p>
+                              <p>• 과세표준이 300,000,000원 초과 → 특례세율: 420,000원＋300,000,000원 초과금액의 1,000분의 3.5(간이세율: 과세표준액 × 0.35% - 630,000원)</p>
+                            </div>
+                          </div>
+
+                          {/* Step 1 */}
+                          <div className="bg-white p-3 rounded border border-emerald-200">
+                            <h3 className="text-lg font-bold text-emerald-700 mb-2">Step 1. 특례세율 적용 계산</h3>
+                            <p className="font-medium text-gray-700 mb-1">최종 과세표준 × 특례세율 × 재산소유비율</p>
+                            <p className="text-gray-700">= {formatCurrency(result.taxableStandard)} × 0.1% - 30,000 × {propertyData.ownershipRatio}% = {formatCurrency(result.specialRateAmount)} → {formatCurrency(Math.floor(result.specialRateAmount / 10) * 10)}원</p>
+                          </div>
+
+                          {/* Step 2 */}
+                          <div className="bg-white p-3 rounded border border-emerald-200">
+                            <h3 className="text-lg font-bold text-emerald-700 mb-2">Step 2. 전세사기 감면 50% 적용</h3>
+                            <p className="font-medium text-gray-700 mb-1">과세표준 × 표준세율 × 전세사기 감면율 × 재산소유비율</p>
+                            <p className="text-gray-700">= ({formatCurrency(result.taxableStandard)} × 0.15% - 30,000) × 50% × {propertyData.ownershipRatio}% = {formatCurrency(Math.floor((result.standardRateAmount * 0.5 * (propertyData.ownershipRatio / 100)) / 10) * 10)}원</p>
+                          </div>
+
+                          {/* Step 3 */}
+                          <div className="bg-white p-3 rounded border border-emerald-200">
+                            <h3 className="text-lg font-bold text-emerald-700 mb-2">Step 3. 과세표준 적용 계산 VS 전세사기 감면 적용 계산</h3>
+                            <p className="text-gray-700">Step 1의 {formatCurrency(Math.floor(result.specialRateAmount / 10) * 10)}원 VS Step 2의 {formatCurrency(Math.floor((result.standardRateAmount * 0.5 * (propertyData.ownershipRatio / 100)) / 10) * 10)}원</p>
+                            <p className="font-semibold text-emerald-600">중 적은 값: {formatCurrency(Math.min(Math.floor(result.specialRateAmount / 10) * 10, Math.floor((result.standardRateAmount * 0.5 * (propertyData.ownershipRatio / 100)) / 10) * 10))}원</p>
+                          </div>
+
+                          {/* Step 4 */}
+                          {propertyData.previousYear.actualPaidTax > 0 && (
+                            <div className="bg-white p-3 rounded border border-emerald-200">
+                              <h3 className="text-lg font-bold text-emerald-700 mb-2">Step 4. 세부담상한제 적용한 세액 확인</h3>
+                              <p className="text-gray-700">전년도 재산세 본세 {formatCurrency(propertyData.previousYear.actualPaidTax)}원</p>
+                              <p className="text-gray-700">{formatCurrency(propertyData.previousYear.actualPaidTax)} + ({formatCurrency(propertyData.previousYear.actualPaidTax)} × {propertyData.taxBurdenCapRate - 100}%) = {formatCurrency(propertyData.previousYear.actualPaidTax)} + {formatCurrency(Math.floor((propertyData.previousYear.actualPaidTax * ((propertyData.taxBurdenCapRate - 100) / 100)) / 10) * 10)} = {formatCurrency(Math.floor((propertyData.previousYear.actualPaidTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10)}원</p>
+                            </div>
+                          )}
+
+                          {/* Step 5 */}
+                          {propertyData.previousYear.actualPaidTax > 0 && (
+                            <div className="bg-white p-3 rounded border border-emerald-200">
+                              <h3 className="text-lg font-bold text-emerald-700 mb-2">Step 5. 세액 비교 및 선택</h3>
+                              <p className="font-medium text-gray-700 mb-1">최종 재산세 본세 선택</p>
+                              <p className="text-gray-700">Step 3에서 선택된 세액 VS 세부담상한제 적용한 세액</p>
+                              <p className="text-gray-700">{formatCurrency(Math.min(Math.floor(result.specialRateAmount / 10) * 10, Math.floor((result.standardRateAmount * 0.5 * (propertyData.ownershipRatio / 100)) / 10) * 10))}원 vs {formatCurrency(Math.floor((propertyData.previousYear.actualPaidTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10)}원</p>
+                              <p className="font-semibold text-emerald-600">최종 선택: {formatCurrency(result.propertyTax)}원(더 적은 금액)</p>
+                            </div>
+                          )}
+
+                          {/* Step 6 */}
+                          <div className="bg-emerald-100 p-3 rounded border border-emerald-300">
+                            <h3 className="text-lg font-bold text-emerald-800 mb-2">Step 6. 최종 재산세 본세</h3>
+                            <p className="text-xl font-bold text-emerald-800">{formatCurrency(result.propertyTax)}원</p>
+                          </div>
+
+                          <p className="text-xs text-gray-500 mt-3">※ 기본 세액(소유비율 적용 전): {formatCurrency(Math.floor(result.specialRateAmount / 10) * 10)}원</p>
+                        </div>
+                      );
+                    }
+                    
+                    // 기존 로직 (전세사기 감면이 아닌 경우)
                     const basePropertyTaxBeforeOwnership = propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000 && propertyData.propertyType !== "다가구주택" 
                       ? result.specialRateAmount 
                       : result.standardRateAmount;
@@ -702,45 +812,50 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                   })()}
                 </div>
                 
-                                 {/* 세부담상한제 */}
-                 {propertyData.previousYear.actualPaidTax > 0 && (
-                   <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-                     <span className="text-sm text-gray-600 block mb-2">세부담상한제 적용</span>
-                     <p className="text-gray-700">
-                       전년도 납부세액 {formatCurrency(propertyData.previousYear.actualPaidTax)}원 × {propertyData.taxBurdenCapRate}% = {formatCurrency(Math.floor((propertyData.previousYear.actualPaidTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10)}원
-                     </p>
-                   </div>
-                 )}
+                {/* 전세사기 감면이 아닌 경우에만 기존 세부담상한제, 세액비교, 최종결과 표시 */}
+                {!(propertyData.reductionType === "전세사기 감면" && propertyData.currentYearReductionRate > 0 && propertyData.isSingleHousehold) && (
+                  <>
+                    {/* 세부담상한제 */}
+                    {propertyData.previousYear.actualPaidTax > 0 && (
+                      <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                        <span className="text-sm text-gray-600 block mb-2">세부담상한제 적용</span>
+                        <p className="text-gray-700">
+                          전년도 납부세액 {formatCurrency(propertyData.previousYear.actualPaidTax)}원 × {propertyData.taxBurdenCapRate}% = {formatCurrency(Math.floor((propertyData.previousYear.actualPaidTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10)}원
+                        </p>
+                      </div>
+                    )}
 
-                 {/* 세부담상한제 비교 */}
-                 {propertyData.previousYear.actualPaidTax > 0 && (
-                   <div className="bg-yellow-100 p-4 rounded-lg border border-yellow-300">
-                     <span className="text-sm text-gray-600 block mb-2">세액 비교 및 선택</span>
-                     {(() => {
-                       const taxBurdenCapAmount = Math.floor((propertyData.previousYear.actualPaidTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10;
-                       
-                       // 올바른 기본 세액 사용 - specialRateAmount 또는 standardRateAmount 중 적용된 것 사용
-                       const basePropertyTaxBeforeOwnership = propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000 && propertyData.propertyType !== "다가구주택" 
-                         ? result.specialRateAmount 
-                         : result.standardRateAmount;
-                       const roundedBasePropertyTax = Math.floor(basePropertyTaxBeforeOwnership / 10) * 10;
-                       let propertyTaxWithOwnership = Math.floor((roundedBasePropertyTax * (propertyData.ownershipRatio / 100)) / 10) * 10;
-                       
-                       // 전세사기 감면, 노후연금 감면 적용 (소유비율 적용 후)
-                       if ((propertyData.reductionType === "전세사기 감면" || propertyData.reductionType === "노후연금") && propertyData.currentYearReductionRate > 0) {
-                         propertyTaxWithOwnership = Math.floor((propertyTaxWithOwnership * (1 - propertyData.currentYearReductionRate / 100)) / 10) * 10;
-                       }
-                       
-                       return (
-                         <div className="text-gray-700 space-y-1">
-                           <p>과세표준을 적용한 재산세(소유비율 적용): {formatCurrency(propertyTaxWithOwnership)}원</p>
-                           <p>세부담상한액: {formatCurrency(taxBurdenCapAmount)}원</p>
-                           <p className="font-semibold">최종 선택: {formatCurrency(result.propertyTax)}원 (더 적은 금액 적용)</p>
-                         </div>
-                       );
-                     })()}
-                   </div>
-                 )}
+                    {/* 세부담상한제 비교 */}
+                    {propertyData.previousYear.actualPaidTax > 0 && (
+                      <div className="bg-yellow-100 p-4 rounded-lg border border-yellow-300">
+                        <span className="text-sm text-gray-600 block mb-2">세액 비교 및 선택</span>
+                        {(() => {
+                          const taxBurdenCapAmount = Math.floor((propertyData.previousYear.actualPaidTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10;
+                          
+                          // 올바른 기본 세액 사용 - specialRateAmount 또는 standardRateAmount 중 적용된 것 사용
+                          const basePropertyTaxBeforeOwnership = propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000 && propertyData.propertyType !== "다가구주택" 
+                            ? result.specialRateAmount 
+                            : result.standardRateAmount;
+                          const roundedBasePropertyTax = Math.floor(basePropertyTaxBeforeOwnership / 10) * 10;
+                          let propertyTaxWithOwnership = Math.floor((roundedBasePropertyTax * (propertyData.ownershipRatio / 100)) / 10) * 10;
+                          
+                          // 전세사기 감면, 노후연금 감면 적용 (소유비율 적용 후)
+                          if ((propertyData.reductionType === "전세사기 감면" || propertyData.reductionType === "노후연금") && propertyData.currentYearReductionRate > 0) {
+                            propertyTaxWithOwnership = Math.floor((propertyTaxWithOwnership * (1 - propertyData.currentYearReductionRate / 100)) / 10) * 10;
+                          }
+                          
+                          return (
+                            <div className="text-gray-700 space-y-1">
+                              <p>과세표준을 적용한 재산세(소유비율 적용): {formatCurrency(propertyTaxWithOwnership)}원</p>
+                              <p>세부담상한액: {formatCurrency(taxBurdenCapAmount)}원</p>
+                              <p className="font-semibold">최종 선택: {formatCurrency(result.propertyTax)}원 (더 적은 금액 적용)</p>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
+                  </>
+                )}
                 
                 {/* 임대주택 감면 적용 */}
                 {propertyData.reductionType === "임대주택" && propertyData.currentYearReductionRate > 0 && (
@@ -774,11 +889,13 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                   </div>
                 )}
                 
-                {/* 최종 결과 */}
-                <div className="bg-emerald-100 p-4 rounded-lg border border-emerald-300">
-                  <span className="text-sm text-charcoal-600 block mb-1">최종 재산세</span>
-                  <p className="font-bold text-charcoal-800 text-lg">{formatCurrency(result.propertyTax)}원</p>
-                </div>
+                {/* 전세사기 감면이 아닌 경우에만 최종 결과 표시 */}
+                {!(propertyData.reductionType === "전세사기 감면" && propertyData.currentYearReductionRate > 0 && propertyData.isSingleHousehold) && (
+                  <div className="bg-emerald-100 p-4 rounded-lg border border-emerald-300">
+                    <span className="text-sm text-charcoal-600 block mb-1">최종 재산세</span>
+                    <p className="font-bold text-charcoal-800 text-lg">{formatCurrency(result.propertyTax)}원</p>
+                  </div>
+                )}
               </div>
             </div>
 
