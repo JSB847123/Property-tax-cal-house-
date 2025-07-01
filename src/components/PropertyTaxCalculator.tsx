@@ -1824,18 +1824,7 @@ const PropertyTaxCalculator = () => {
           <div className="space-y-6 border rounded-lg p-6 bg-green-50">
             <h3 className="text-lg font-semibold text-green-800">전년도 정보</h3>
             
-            {/* 전년도 다가구주택 구별 입력 */}
-            {propertyData.propertyType === "다가구주택" && (
-              <MultiUnitInputs
-                units={propertyData.previousYear.multiUnits}
-                onAdd={addPreviousYearMultiUnit}
-                onRemove={removePreviousYearMultiUnit}
-                onUpdate={updatePreviousYearMultiUnit}
-                title="전년도 구별 과세표준 및 지역자원시설세 과세표준"
-              />
-            )}
-            
-            {/* 전년도 일반 주택 정보 */}
+            {/* 전년도 일반 주택 정보 (다가구주택이 아닌 경우에만 표시) */}
             {propertyData.propertyType !== "다가구주택" && (
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="space-y-2">
@@ -1913,6 +1902,7 @@ const PropertyTaxCalculator = () => {
               </div>
             )}
 
+            {/* 전년도 재산세 본세와 도시지역분 결정세액 (모든 주택 유형에 공통으로 표시) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
