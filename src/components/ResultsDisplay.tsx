@@ -515,7 +515,7 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                   
                   // 상한액 계산
                   const capAmount = propertyData.previousYear.urbanAreaTax > 0 
-                    ? Math.floor((propertyData.previousYear.urbanAreaTax * (1 + propertyData.taxBurdenCapRate / 100)) / 10) * 10
+                    ? Math.floor((propertyData.previousYear.urbanAreaTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10
                     : 0;
                   
                   // 기본 계산과 상한액 중 작은 값
@@ -549,7 +549,7 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                           <div className="bg-professional-50 p-4 rounded-lg border border-professional-200">
                             <span className="text-sm text-charcoal-600 block mb-1">도시지역분 상한액</span>
                             <p className="text-charcoal-700">
-                              전년도 × {100 + propertyData.taxBurdenCapRate}% = {formatCurrency(capAmount)}원
+                              전년도 × {propertyData.taxBurdenCapRate}% = {formatCurrency(capAmount)}원
                             </p>
                           </div>
                           
