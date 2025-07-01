@@ -499,35 +499,78 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
             <div className="bg-white border border-gray-200 rounded-lg p-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-200">4. 도시지역분 계산</h3>
               <div className="space-y-4">
-                <div className="bg-professional-50 p-4 rounded-lg border border-professional-200">
-                  <span className="text-sm text-charcoal-600 block mb-1">기본 도시지역분</span>
-                  <p className="text-gray-700">
-                    과세표준 × 0.14% × 소유비율 = {formatCurrency(result.taxableStandard)} × 0.14% × {propertyData.ownershipRatio}% = {formatCurrency(Math.floor((result.taxableStandard * 0.0014 * (propertyData.ownershipRatio / 100)) / 10) * 10)}원
-                  </p>
-                </div>
-                
-                {propertyData.previousYear.urbanAreaTax > 0 && (
-                  <>
-                    <div className="bg-professional-50 p-4 rounded-lg border border-professional-200">
-                      <span className="text-sm text-charcoal-600 block mb-1">전년도 도시지역분 결정세액</span>
-                      <p className="text-charcoal-700">{formatCurrency(propertyData.previousYear.urbanAreaTax)}원</p>
-                    </div>
-                    <div className="bg-professional-50 p-4 rounded-lg border border-professional-200">
-                      <span className="text-sm text-charcoal-600 block mb-1">도시지역분 상한액</span>
-                      <p className="text-charcoal-700">
-                        전년도 × {propertyData.taxBurdenCapRate}% = {formatCurrency(propertyData.previousYear.urbanAreaTax)} × {propertyData.taxBurdenCapRate}% = {formatCurrency(Math.floor((propertyData.previousYear.urbanAreaTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10)}원
-                      </p>
-                    </div>
-                  </>
-                )}
-                
-                <div className="bg-professional-100 p-4 rounded-lg border border-professional-300">
-                  <span className="text-sm text-charcoal-600 block mb-1">최종 도시지역분</span>
-                  <p className="font-bold text-charcoal-800 text-lg">
-                    {formatCurrency(result.urbanAreaTax)}원
-                    {propertyData.previousYear.urbanAreaTax > 0 && " (기본 도시지역분과 상한액 중 작은 값)"}
-                  </p>
-                </div>
+                {(() => {
+                  // 기본 도시지역분 계산
+                  const basicUrbanAreaTax = Math.floor((result.taxableStandard * 0.0014 * (propertyData.ownershipRatio / 100)) / 10) * 10;
+                  
+                  // 상한액 계산
+                  const capAmount = propertyData.previousYear.urbanAreaTax > 0 
+                    ? Math.floor((propertyData.previousYear.urbanAreaTax * (1 + propertyData.taxBurdenCapRate / 100)) / 10) * 10
+                    : 0;
+                  
+                  // 기본 계산과 상한액 중 작은 값
+                  const beforeReduction = propertyData.previousYear.urbanAreaTax > 0 
+                    ? Math.min(basicUrbanAreaTax, capAmount)
+                    : basicUrbanAreaTax;
+                  
+                  // 임대주택 감면율 적용
+                  const isRentalHousing = propertyData.reductionType === "임대주택";
+                  const reductionRate = propertyData.currentYearReductionRate || 0;
+                  const finalUrbanAreaTax = isRentalHousing && reductionRate > 0 
+                    ? Math.floor((beforeReduction * (1 - reductionRate / 100)) / 10) * 10
+                    : beforeReduction;
+                    
+                  return (
+                    <>
+                      <div className="bg-professional-50 p-4 rounded-lg border border-professional-200">
+                        <span className="text-sm text-charcoal-600 block mb-1">도시지역분 과세표준을 이용한 계산</span>
+                        <p className="text-gray-700">
+                          과세표준 × 0.14% × 소유비율 = {formatCurrency(result.taxableStandard)}원 × 0.14% × {propertyData.ownershipRatio}% = {formatCurrency(basicUrbanAreaTax)}원
+                        </p>
+                      </div>
+                      
+                      {propertyData.previousYear.urbanAreaTax > 0 && (
+                        <>
+                          <div className="bg-professional-50 p-4 rounded-lg border border-professional-200">
+                            <span className="text-sm text-charcoal-600 block mb-1">전년도 도시지역분 결정세액</span>
+                            <p className="text-charcoal-700">{formatCurrency(propertyData.previousYear.urbanAreaTax)}원</p>
+                          </div>
+                          
+                          <div className="bg-professional-50 p-4 rounded-lg border border-professional-200">
+                            <span className="text-sm text-charcoal-600 block mb-1">도시지역분 상한액</span>
+                            <p className="text-charcoal-700">
+                              전년도 + (전년도 × {propertyData.taxBurdenCapRate}%) = {formatCurrency(propertyData.previousYear.urbanAreaTax)}원 + ({formatCurrency(propertyData.previousYear.urbanAreaTax)}원 × {propertyData.taxBurdenCapRate}%) = {formatCurrency(capAmount)}원
+                            </p>
+                          </div>
+                          
+                          <div className="bg-professional-50 p-4 rounded-lg border border-professional-200">
+                            <span className="text-sm text-charcoal-600 block mb-1">도시지역분 과세표준을 이용한 계산 vs 상한액 중 적은 값</span>
+                            <p className="text-charcoal-700">
+                              {formatCurrency(basicUrbanAreaTax)}원 vs {formatCurrency(capAmount)}원 = {formatCurrency(beforeReduction)}원 (더 낮은 금액 선택)
+                            </p>
+                          </div>
+                        </>
+                      )}
+                      
+                      {isRentalHousing && reductionRate > 0 && (
+                        <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                          <span className="text-sm text-charcoal-600 block mb-1">감면율 적용</span>
+                          <p className="text-charcoal-700">
+                            {formatCurrency(beforeReduction)}원 × (100% - {reductionRate}%) = {formatCurrency(beforeReduction)}원 × {100 - reductionRate}% = {formatCurrency(finalUrbanAreaTax)}원
+                          </p>
+                        </div>
+                      )}
+                      
+                      <div className="bg-professional-100 p-4 rounded-lg border border-professional-300">
+                        <span className="text-sm text-charcoal-600 block mb-1">최종 도시지역분</span>
+                        <p className="font-bold text-charcoal-800 text-lg">
+                          {formatCurrency(result.urbanAreaTax)}원
+                          {isRentalHousing && reductionRate > 0 && " (임대주택 감면 적용)"}
+                        </p>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
 
