@@ -559,7 +559,7 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
         </CardContent>
       </Card>
       
-      {showAdvanced && propertyData.previousYear.taxableStandard > 0 && (
+      {showAdvanced && (
         <Card className="shadow-lg border-0 bg-white/80 backdrop-blur">
           <CardHeader className="bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-t-lg">
             <CardTitle className="flex items-center gap-2 text-xl">
