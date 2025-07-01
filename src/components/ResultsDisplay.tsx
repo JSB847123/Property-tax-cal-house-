@@ -433,19 +433,23 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                             ? result.specialRateAmount 
                             : result.standardRateAmount;
                           const roundedBasePropertyTax = Math.floor(basePropertyTaxBeforeOwnership / 10) * 10;
-                          let propertyTaxWithOwnership = Math.floor((roundedBasePropertyTax * (propertyData.ownershipRatio / 100)) / 10) * 10;
+                          const propertyTaxWithOwnership = Math.floor((roundedBasePropertyTax * (propertyData.ownershipRatio / 100)) / 10) * 10;
                           
-                          // 전세사기 감면, 노후연금 감면 적용 (소유비율 적용 후)
+                          // 감면 전 값으로 비교 (순수한 과세표준 적용 재산세와 세부담상한액 비교)
+                          const finalSelectedAmount = Math.min(propertyTaxWithOwnership, taxBurdenCapAmount);
+                          
+                          // 표시용 값 계산 (감면 적용된 값)
+                          let displayPropertyTaxWithOwnership = propertyTaxWithOwnership;
                           if ((propertyData.reductionType === "전세사기 감면" || propertyData.reductionType === "노후연금") && propertyData.currentYearReductionRate > 0) {
-                            propertyTaxWithOwnership = Math.floor((propertyTaxWithOwnership * (1 - propertyData.currentYearReductionRate / 100)) / 10) * 10;
+                            displayPropertyTaxWithOwnership = Math.floor((propertyTaxWithOwnership * (1 - propertyData.currentYearReductionRate / 100)) / 10) * 10;
                           }
                           
                           return (
                             <div className="text-gray-700 space-y-1">
-                              <p>과세표준을 적용한 재산세(소유비율 적용): {formatCurrency(propertyTaxWithOwnership)}원</p>
+                              <p>과세표준을 적용한 재산세(소유비율 적용): {formatCurrency(displayPropertyTaxWithOwnership)}원</p>
                               <p>세부담상한액: {formatCurrency(taxBurdenCapAmount)}원</p>
                               <p className="font-semibold">
-                                최종 선택: {formatCurrency(result.propertyTax)}원
+                                최종 선택: {formatCurrency(finalSelectedAmount)}원
                                 {propertyTaxWithOwnership < taxBurdenCapAmount 
                                   ? ` (${formatCurrency(propertyTaxWithOwnership)}원이 더 적은 금액)`
                                   : ` (${formatCurrency(taxBurdenCapAmount)}원이 더 적은 금액)`
