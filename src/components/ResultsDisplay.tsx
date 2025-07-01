@@ -444,7 +444,13 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                             <div className="text-gray-700 space-y-1">
                               <p>과세표준을 적용한 재산세(소유비율 적용): {formatCurrency(propertyTaxWithOwnership)}원</p>
                               <p>세부담상한액: {formatCurrency(taxBurdenCapAmount)}원</p>
-                              <p className="font-semibold">최종 선택: {formatCurrency(result.propertyTax)}원 ({formatCurrency(propertyTaxWithOwnership)}원과 {formatCurrency(taxBurdenCapAmount)}원 중 더 적은 금액 적용)</p>
+                              <p className="font-semibold">
+                                최종 선택: {formatCurrency(result.propertyTax)}원
+                                {propertyTaxWithOwnership < taxBurdenCapAmount 
+                                  ? ` (${formatCurrency(propertyTaxWithOwnership)}원이 더 적은 금액)`
+                                  : ` (${formatCurrency(taxBurdenCapAmount)}원이 더 적은 금액)`
+                                }
+                              </p>
                             </div>
                           );
                         })()}
@@ -539,7 +545,7 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                           <div className="bg-professional-50 p-4 rounded-lg border border-professional-200">
                             <span className="text-sm text-charcoal-600 block mb-1">도시지역분 상한액</span>
                             <p className="text-charcoal-700">
-                              전년도 + (전년도 × {propertyData.taxBurdenCapRate - 100}%) = {formatCurrency(capAmount)}원
+                              전년도 × {propertyData.taxBurdenCapRate}% = {formatCurrency(capAmount)}원
                             </p>
                           </div>
                           
