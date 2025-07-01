@@ -549,7 +549,7 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                           <div className="bg-professional-50 p-4 rounded-lg border border-professional-200">
                             <span className="text-sm text-charcoal-600 block mb-1">도시지역분 상한액</span>
                             <p className="text-charcoal-700">
-                              전년도 × {propertyData.taxBurdenCapRate}% = {formatCurrency(capAmount)}원
+                              전년도 × {100 + propertyData.taxBurdenCapRate}% = {formatCurrency(capAmount)}원
                             </p>
                           </div>
                           
