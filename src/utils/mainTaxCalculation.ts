@@ -175,8 +175,10 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
         return total + calculateStandardPropertyTax(unit.taxableStandard);
       }, 0);
       
-      // 지역자원시설세 계산 (소유비율 적용 전)
-      regionalResourceTax = calculateMultiUnitRegionalResourceTax(safePropertyData.multiUnits).totalTax;
+      // 지역자원시설세 계산 - 건물소유비율 적용
+      const multiUnitRegionalResult = calculateMultiUnitRegionalResourceTax(safePropertyData.multiUnits);
+      const detailBuildingOwnershipRatio = safePropertyData.buildingOwnershipRatio !== undefined ? safePropertyData.buildingOwnershipRatio : (safePropertyData.ownershipRatio || 100);
+      regionalResourceTax = Math.floor((multiUnitRegionalResult.totalTax * (detailBuildingOwnershipRatio / 100)) / 10) * 10;
       
       // 분기별 세액 설명 추가 (다가구주택)
       const multiUnitTotalTaxableStandard = safePropertyData.multiUnits.reduce((sum, unit) => sum + unit.taxableStandard, 0);
@@ -298,34 +300,79 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
       stepNumber++;
     }
     
-    // 지역자원시설세 계산 과정 추가
+        // 지역자원시설세 계산 과정 추가
     calculationDetails += `\n\n${stepNumber}. 지역자원시설세 계산`;
-    calculationDetails += `\n각 구별 과세표준에 해당하는 세율을 적용하여 계산`;
     
-    const multiUnitRegionalResult = calculateMultiUnitRegionalResourceTax(safePropertyData.multiUnits);
-    multiUnitRegionalResult.unitCalculations.forEach((calc, index) => {
-      calculationDetails += `\n\n${index + 1}구 계산:`;
-      calculationDetails += `\n• 과세표준: ${formatNumberWithCommas(calc.taxableStandard)}원`;
-      calculationDetails += `\n• 적용 구간: ${calc.taxBracket}`;
-      calculationDetails += `\n• 세율: ${calc.taxRate}%`;
-      
-      // 지역자원시설세 계산 공식 표시 (새로운 6개 구간)
-      if (calc.taxableStandard <= 6000000) {
-        calculationDetails += `\n• 계산: ${formatNumberWithCommas(calc.taxableStandard)}원 × ${calc.taxRate}% = ${formatNumberWithCommas(calc.taxAmount)}원`;
-      } else if (calc.taxableStandard <= 13000000) {
-        calculationDetails += `\n• 계산: ${formatNumberWithCommas(calc.taxableStandard)}원 × ${calc.taxRate}% - 600원 = ${formatNumberWithCommas(calc.taxAmount)}원`;
-      } else if (calc.taxableStandard <= 26000000) {
-        calculationDetails += `\n• 계산: ${formatNumberWithCommas(calc.taxableStandard)}원 × ${calc.taxRate}% - 1,900원 = ${formatNumberWithCommas(calc.taxAmount)}원`;
-      } else if (calc.taxableStandard <= 39000000) {
-        calculationDetails += `\n• 계산: ${formatNumberWithCommas(calc.taxableStandard)}원 × ${calc.taxRate}% - 7,100원 = ${formatNumberWithCommas(calc.taxAmount)}원`;
-      } else if (calc.taxableStandard <= 64000000) {
-        calculationDetails += `\n• 계산: ${formatNumberWithCommas(calc.taxableStandard)}원 × ${calc.taxRate}% - 14,900원 = ${formatNumberWithCommas(calc.taxAmount)}원`;
-      } else {
-        calculationDetails += `\n• 계산: ${formatNumberWithCommas(calc.taxableStandard)}원 × ${calc.taxRate}% - 27,700원 = ${formatNumberWithCommas(calc.taxAmount)}원`;
-      }
+    const detailBuildingOwnershipRatio = safePropertyData.buildingOwnershipRatio !== undefined ? safePropertyData.buildingOwnershipRatio : (safePropertyData.ownershipRatio || 100);
+    const ownershipLabel = safePropertyData.buildingOwnershipRatio !== undefined ? "건물소유비율" : "재산비율";
+    
+    // 입력된 과세표준에 직접 세율 적용
+    const detailRegionalResult = calculateMultiUnitRegionalResourceTax(safePropertyData.multiUnits);
+    
+    // 과세표준 표시
+    calculationDetails += `\n지역자원시설세 과세표준`;
+    detailRegionalResult.unitCalculations.forEach((calc, index) => {
+      const originalStandard = safePropertyData.multiUnits[index].regionalResourceTaxStandard || safePropertyData.multiUnits[index].taxableStandard;
+      calculationDetails += `\n${index + 1}구: ${formatNumberWithCommas(originalStandard)}원`;
     });
     
-    calculationDetails += `\n\n지역자원시설세 합계: ${formatNumberWithCommas(regionalResourceTax)}원`;
+    // 세율 적용 (100% 기준)
+    calculationDetails += `\n\n- 세율 적용 (100% 기준):`;
+    detailRegionalResult.unitCalculations.forEach((calc, index) => {
+      const originalStandard = safePropertyData.multiUnits[index].regionalResourceTaxStandard || safePropertyData.multiUnits[index].taxableStandard;
+      
+      // 구간별 세율 표시
+      let rateDisplay = "10,000분의 4";
+      if (calc.taxableStandard > 6000000 && calc.taxableStandard <= 13000000) {
+        rateDisplay = "10,000분의 5";
+      } else if (calc.taxableStandard > 13000000 && calc.taxableStandard <= 26000000) {
+        rateDisplay = "10,000분의 6";
+      } else if (calc.taxableStandard > 26000000 && calc.taxableStandard <= 39000000) {
+        rateDisplay = "10,000분의 8";
+      } else if (calc.taxableStandard > 39000000 && calc.taxableStandard <= 64000000) {
+        rateDisplay = "10,000분의 10";
+      } else if (calc.taxableStandard > 64000000) {
+        rateDisplay = "10,000분의 12";
+      }
+      
+      calculationDetails += `\n${index + 1}구: ${formatNumberWithCommas(originalStandard)}원 × ${rateDisplay} = ${calc.taxAmount}`;
+    });
+    
+    // 100% 기준 합계 표시
+    calculationDetails += `\n\n합계: ${detailRegionalResult.totalTax}`;
+    
+    // 건물소유비율 적용
+    calculationDetails += `\n\n- ${ownershipLabel} 적용`;
+    detailRegionalResult.unitCalculations.forEach((calc, index) => {
+      const originalStandard = safePropertyData.multiUnits[index].regionalResourceTaxStandard || safePropertyData.multiUnits[index].taxableStandard;
+      const unitTaxWithOwnership = calc.taxAmount * (detailBuildingOwnershipRatio / 100);
+      
+      // 구간별 세율 표시
+      let rateDisplay = "10,000분의 4";
+      if (calc.taxableStandard > 6000000 && calc.taxableStandard <= 13000000) {
+        rateDisplay = "10,000분의 5";
+      } else if (calc.taxableStandard > 13000000 && calc.taxableStandard <= 26000000) {
+        rateDisplay = "10,000분의 6";
+      } else if (calc.taxableStandard > 26000000 && calc.taxableStandard <= 39000000) {
+        rateDisplay = "10,000분의 8";
+      } else if (calc.taxableStandard > 39000000 && calc.taxableStandard <= 64000000) {
+        rateDisplay = "10,000분의 10";
+      } else if (calc.taxableStandard > 64000000) {
+        rateDisplay = "10,000분의 12";
+      }
+      
+      calculationDetails += `\n${index + 1}구: ${formatNumberWithCommas(originalStandard)}원 × ${rateDisplay} × ${detailBuildingOwnershipRatio}% = ${unitTaxWithOwnership}`;
+    });
+    
+    // 건물소유비율 적용 후 최종 합계 계산
+    const afterOwnershipTotal = detailRegionalResult.unitCalculations.reduce((sum, calc) => {
+      return sum + (calc.taxAmount * (detailBuildingOwnershipRatio / 100));
+    }, 0);
+    
+    // 건물소유비율 적용하여 최종 지역자원시설세 계산
+    regionalResourceTax = Math.floor(afterOwnershipTotal / 10) * 10;
+    
+    calculationDetails += `\n\n합계: ${formatNumberWithCommas(afterOwnershipTotal)}원`;
     
     // 지역자원시설세 세율 구간 정보 추가
     calculationDetails += `\n\n#### 지역자원시설세 세율`;
@@ -345,13 +392,11 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
       return total + calculateStandardPropertyTax(unit.taxableStandard);
     }, 0);
     
-    // 다가구주택은 이미 calculateMultiUnitRegionalResourceTax로 각 구별 과세표준에 맞는 세율로 계산됨
-    regionalResourceTax = multiUnitRegionalResult.totalTax;
-    
     console.log('지역자원시설세 계산 (다가구주택):', {
-      unitCalculations: multiUnitRegionalResult.unitCalculations,
-      totalTax: regionalResourceTax,
-      ownershipRatio: safePropertyData.ownershipRatio
+      originalUnits: safePropertyData.multiUnits.map(u => ({ id: u.id, standard: u.regionalResourceTaxStandard || u.taxableStandard })),
+      beforeOwnershipTax: detailRegionalResult.totalTax,
+      buildingOwnershipRatio: detailBuildingOwnershipRatio,
+      finalTax: regionalResourceTax
     });
   } else {
     // 일반 주택의 경우 과표상한제 적용
@@ -651,7 +696,7 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     regionalResourceTaxStandard = safePropertyData.regionalResourceTaxStandard || 0;
     
     // 건물소유비율 사용 (항상 건물소유비율 기준)
-    buildingOwnershipRatio = safePropertyData.buildingOwnershipRatio || safePropertyData.ownershipRatio || 100;
+    buildingOwnershipRatio = safePropertyData.buildingOwnershipRatio !== undefined ? safePropertyData.buildingOwnershipRatio : (safePropertyData.ownershipRatio || 100);
     
     // 건물소유비율 100% 기준 과세표준으로 역산
     fullOwnershipRegionalStandard = regionalResourceTaxStandard / (buildingOwnershipRatio / 100);
@@ -725,29 +770,32 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     calculationDetails += `\n• 2기 납부액 (9월): ${formatNumberWithCommas(fullHalfYearTaxForDetails)}원 (동일)`;
     calculationDetails += `\n• 연간 총액: ${formatNumberWithCommas(propertyTaxTotalForDetails + regionalResourceTax)}원`;
     
-    // 지역자원시설세 계산 설명 추가 (1세대 1주택 특례 제거)
+    // 지역자원시설세 계산 설명 추가
     calculationDetails += `\n\n6. 지역자원시설세 계산`;
     calculationDetails += `\n• 과세표준: ${formatNumberWithCommas(regionalResourceTaxStandard)}원`;
     
-    // 지역자원시설세 계산 공식 표시 (새로운 6개 구간)
+    // 세율 적용 (100% 기준)
+    calculationDetails += `\n\n- 세율 적용 (100% 기준):`;
     if (fullOwnershipRegionalStandard <= 6000000) {
-      calculationDetails += `\n• 계산: ${formatNumberWithCommas(fullOwnershipRegionalStandard)}원 × 0.04% = ${formatNumberWithCommas(fullOwnershipRegionalTax)}원`;
+      calculationDetails += `\n${formatNumberWithCommas(fullOwnershipRegionalStandard)}원 × 10,000분의 4 = ${fullOwnershipRegionalTax}`;
     } else if (fullOwnershipRegionalStandard <= 13000000) {
-      calculationDetails += `\n• 계산: ${formatNumberWithCommas(fullOwnershipRegionalStandard)}원 × 0.05% - 600원 = ${formatNumberWithCommas(fullOwnershipRegionalTax)}원`;
+      calculationDetails += `\n${formatNumberWithCommas(fullOwnershipRegionalStandard)}원 × 10,000분의 5 - 600원 = ${fullOwnershipRegionalTax}`;
     } else if (fullOwnershipRegionalStandard <= 26000000) {
-      calculationDetails += `\n• 계산: ${formatNumberWithCommas(fullOwnershipRegionalStandard)}원 × 0.06% - 1,900원 = ${formatNumberWithCommas(fullOwnershipRegionalTax)}원`;
+      calculationDetails += `\n${formatNumberWithCommas(fullOwnershipRegionalStandard)}원 × 10,000분의 6 - 1,900원 = ${fullOwnershipRegionalTax}`;
     } else if (fullOwnershipRegionalStandard <= 39000000) {
-      calculationDetails += `\n• 계산: ${formatNumberWithCommas(fullOwnershipRegionalStandard)}원 × 0.08% - 7,100원 = ${formatNumberWithCommas(fullOwnershipRegionalTax)}원`;
+      calculationDetails += `\n${formatNumberWithCommas(fullOwnershipRegionalStandard)}원 × 10,000분의 8 - 7,100원 = ${fullOwnershipRegionalTax}`;
     } else if (fullOwnershipRegionalStandard <= 64000000) {
-      calculationDetails += `\n• 계산: ${formatNumberWithCommas(fullOwnershipRegionalStandard)}원 × 0.1% - 14,900원 = ${formatNumberWithCommas(fullOwnershipRegionalTax)}원`;
+      calculationDetails += `\n${formatNumberWithCommas(fullOwnershipRegionalStandard)}원 × 10,000분의 10 - 14,900원 = ${fullOwnershipRegionalTax}`;
     } else {
-      calculationDetails += `\n• 계산: ${formatNumberWithCommas(fullOwnershipRegionalStandard)}원 × 0.12% - 27,700원 = ${formatNumberWithCommas(fullOwnershipRegionalTax)}원`;
+      calculationDetails += `\n${formatNumberWithCommas(fullOwnershipRegionalStandard)}원 × 10,000분의 12 - 27,700원 = ${fullOwnershipRegionalTax}`;
     }
     
-    if (buildingOwnershipRatio < 100) {
-      const ownershipLabel = safePropertyData.buildingOwnershipRatio ? "건물소유비율" : "재산비율";
-      calculationDetails += `\n• ${ownershipLabel} 적용: ${formatNumberWithCommas(Math.floor(fullOwnershipRegionalTax))}원 × ${buildingOwnershipRatio}% = ${formatNumberWithCommas(regionalResourceTax)}원`;
-    }
+    // 건물소유비율 적용 (항상 표시)
+    const ownershipLabel = safePropertyData.buildingOwnershipRatio !== undefined ? "건물소유비율" : "재산비율";
+    calculationDetails += `\n\n- ${ownershipLabel} 적용:`;
+    calculationDetails += `\n${formatNumberWithCommas(Math.floor(fullOwnershipRegionalTax))}원 × ${buildingOwnershipRatio}% = ${formatNumberWithCommas(regionalResourceTax)}`;
+    
+    calculationDetails += `\n\n합계: ${formatNumberWithCommas(regionalResourceTax)}원`;
     
     calculationDetails += `\n\n지역자원시설세: ${formatNumberWithCommas(regionalResourceTax)}원`;
     

@@ -1,0 +1,99 @@
+# Task ID: 1
+# Title: Improve Multi-family Housing Regional Resource Facility Tax Calculation Logic
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Modify the tax calculation logic for multi-family housing to correctly apply building ownership percentage, fix the calculation when ownership is 0%, and improve the display format of calculation process.
+# Details:
+This task involves updating the regional resource facility tax calculation logic for multi-family housing in the `src/utils/mainTaxCalculation.ts` file. The current implementation has several issues:
+
+1. When building ownership percentage is 0%, the tax is incorrectly calculated as 3,720 won instead of 0 won.
+2. The current reverse calculation approach produces incorrect results.
+
+Implementation steps:
+1. Locate the multi-family housing regional resource facility tax calculation section in `src/utils/mainTaxCalculation.ts`.
+2. Modify the calculation logic to directly apply the building ownership percentage to the tax standard of each district.
+3. Add a condition to check if the building ownership percentage is 0%, and if so, set the tax amount to 0 won.
+4. Update the calculation process display format according to user requirements.
+
+Code changes should follow this approach:
+```typescript
+// Example implementation (adjust based on actual code structure)
+function calculateRegionalResourceFacilityTax(buildingOwnershipPercentage: number, taxStandard: number): number {
+  // Return 0 if ownership percentage is 0
+  if (buildingOwnershipPercentage === 0) {
+    return 0;
+  }
+  
+  // Apply ownership percentage directly to tax standard
+  const adjustedTaxStandard = taxStandard * (buildingOwnershipPercentage / 100);
+  
+  // Calculate tax based on adjusted standard
+  // ... calculation logic ...
+  
+  return calculatedTax;
+}
+```
+
+Ensure the calculation process display format meets user requirements by clearly showing:
+- The tax standard amount
+- The building ownership percentage being applied
+- The calculation steps
+- The final tax amount
+
+# Test Strategy:
+1. Unit Testing:
+   - Create unit tests for the updated calculation function with various scenarios:
+     - Test with building ownership percentage of 0% (should return 0 won)
+     - Test with building ownership percentage of 50%
+     - Test with building ownership percentage of 100%
+     - Test with various tax standard amounts
+
+2. Integration Testing:
+   - Verify the calculation works correctly when integrated with the rest of the application
+   - Test the calculation with real district tax standard data
+
+3. Manual Testing:
+   - Create a test case with building ownership percentage set to 0% and verify the displayed tax amount is 0 won
+   - Create test cases with various ownership percentages and verify the calculation results match expected values
+   - Verify the calculation process display format meets user requirements
+
+4. Regression Testing:
+   - Ensure other tax calculations are not affected by these changes
+   - Verify the application functions correctly with the updated calculation logic
+
+5. Documentation:
+   - Document the changes made to the calculation logic
+   - Update any relevant documentation about the tax calculation process
+
+# Subtasks:
+## 1. Update calculation logic for building ownership percentage [pending]
+### Dependencies: None
+### Description: Modify the tax calculation logic to directly apply the building ownership percentage to the tax standard of each district.
+### Details:
+In src/utils/mainTaxCalculation.ts, locate the multi-family housing regional resource facility tax calculation section. Update the function to multiply the tax standard by the building ownership percentage (divided by 100) before proceeding with further calculations.
+
+## 2. Implement 0% ownership condition [pending]
+### Dependencies: 1.1
+### Description: Add a condition to check if the building ownership percentage is 0%, and if so, set the tax amount to 0 won.
+### Details:
+At the beginning of the calculation function, add an if statement to check if buildingOwnershipPercentage === 0. If true, return 0 as the tax amount.
+
+## 3. Refactor reverse calculation approach [pending]
+### Dependencies: 1.1, 1.2
+### Description: Replace the current reverse calculation approach with a direct calculation method to ensure accurate results.
+### Details:
+Review and refactor the existing calculation logic to use a direct approach instead of reverse calculation. Ensure all tax brackets and rates are correctly applied in the new implementation.
+
+## 4. Update calculation process display format [pending]
+### Dependencies: 1.3
+### Description: Modify the output format to clearly show the tax standard amount, building ownership percentage, calculation steps, and final tax amount.
+### Details:
+Create a new function or modify existing code to generate a detailed string representation of the calculation process. Include the tax standard amount, applied building ownership percentage, step-by-step calculations, and the final tax amount.
+
+## 5. Integrate and test changes in the main tax calculation module [pending]
+### Dependencies: 1.1, 1.2, 1.3, 1.4
+### Description: Incorporate all the changes into the main tax calculation module and perform integration testing.
+### Details:
+Update the main tax calculation function in src/utils/mainTaxCalculation.ts to use the new calculation logic, 0% ownership condition, and display format. Ensure all changes are properly integrated and working together correctly.
+
