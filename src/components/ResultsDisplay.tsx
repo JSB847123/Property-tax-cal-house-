@@ -404,25 +404,43 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                               // 1주택 특례 세율 적용 여부 확인
                               const isSpecialRateApplicable = propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000;
                               
-                              // 올바른 기본 세액 사용 (특례세율 또는 표준세율)
-                              const baseAmount = isSpecialRateApplicable ? result.specialRateAmount : result.standardRateAmount;
+                              // 각 구별로 개별 세율 계산 (백엔드 로직과 동일)
+                              let unitTaxBeforeOwnership: number;
+                              let rateFormula: string;
                               
-                              const unitTaxBeforeOwnership = baseAmount * (unit.taxableStandard / propertyData.multiUnits.reduce((sum, u) => sum + u.taxableStandard, 0));
-                              const unitTaxAfterOwnership = unitTaxBeforeOwnership * (propertyData.ownershipRatio / 100);
-                              
-                              // 세율 공식 텍스트 생성
-                              let rateFormula = "세율";
                               if (isSpecialRateApplicable) {
+                                // 1세대 1주택 특례세율 적용
                                 if (unit.taxableStandard <= 60000000) {
+                                  unitTaxBeforeOwnership = unit.taxableStandard * 0.0005;
                                   rateFormula = "(과세표준 × 1,000분의 0.5)";
                                 } else if (unit.taxableStandard <= 150000000) {
+                                  unitTaxBeforeOwnership = 30000 + (unit.taxableStandard - 60000000) * 0.001;
                                   rateFormula = "(3만원＋6천만원 초과금액의 1,000분의 1)";
                                 } else if (unit.taxableStandard <= 300000000) {
+                                  unitTaxBeforeOwnership = 120000 + (unit.taxableStandard - 150000000) * 0.002;
                                   rateFormula = "(12만원＋1.5억원 초과금액의 1,000분의 2)";
                                 } else {
+                                  unitTaxBeforeOwnership = 420000 + (unit.taxableStandard - 300000000) * 0.0035;
                                   rateFormula = "(42만원＋3억원 초과금액의 1,000분의 3.5)";
                                 }
+                              } else {
+                                // 표준세율(간이세율) 적용
+                                if (unit.taxableStandard <= 6000000) {
+                                  unitTaxBeforeOwnership = unit.taxableStandard * 0.001;
+                                  rateFormula = "(과세표준 × 1,000분의 1)";
+                                } else if (unit.taxableStandard <= 150000000) {
+                                  unitTaxBeforeOwnership = unit.taxableStandard * 0.0015 - 30000;
+                                  rateFormula = "(과세표준 × 1,000분의 1.5 - 3만원)";
+                                } else if (unit.taxableStandard <= 300000000) {
+                                  unitTaxBeforeOwnership = unit.taxableStandard * 0.0025 - 165000;
+                                  rateFormula = "(과세표준 × 1,000분의 2.5 - 16만5천원)";
+                                } else {
+                                  unitTaxBeforeOwnership = unit.taxableStandard * 0.004 - 630000;
+                                  rateFormula = "(과세표준 × 1,000분의 4 - 63만원)";
+                                }
                               }
+                              
+                              const unitTaxAfterOwnership = unitTaxBeforeOwnership * (propertyData.ownershipRatio / 100);
                               
                               return (
                                 <p key={unit.id} className="text-sm text-gray-700">
@@ -432,7 +450,41 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                             })}
                             <div className="border-t border-blue-300 mt-2 pt-2">
                               {(() => {
-                                const totalBeforeRounding = ((propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000 ? result.specialRateAmount : result.standardRateAmount) * (propertyData.ownershipRatio / 100));
+                                // 각 구별 계산값들의 합계 (UI 로직과 동일)
+                                const isSpecialRateApplicable = propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000;
+                                let totalBeforeRounding = 0;
+                                
+                                propertyData.multiUnits.forEach((unit) => {
+                                  let unitTaxBeforeOwnership: number;
+                                  
+                                  if (isSpecialRateApplicable) {
+                                    // 1세대 1주택 특례세율 적용
+                                    if (unit.taxableStandard <= 60000000) {
+                                      unitTaxBeforeOwnership = unit.taxableStandard * 0.0005;
+                                    } else if (unit.taxableStandard <= 150000000) {
+                                      unitTaxBeforeOwnership = 30000 + (unit.taxableStandard - 60000000) * 0.001;
+                                    } else if (unit.taxableStandard <= 300000000) {
+                                      unitTaxBeforeOwnership = 120000 + (unit.taxableStandard - 150000000) * 0.002;
+                                    } else {
+                                      unitTaxBeforeOwnership = 420000 + (unit.taxableStandard - 300000000) * 0.0035;
+                                    }
+                                  } else {
+                                    // 표준세율(간이세율) 적용
+                                    if (unit.taxableStandard <= 6000000) {
+                                      unitTaxBeforeOwnership = unit.taxableStandard * 0.001;
+                                    } else if (unit.taxableStandard <= 150000000) {
+                                      unitTaxBeforeOwnership = unit.taxableStandard * 0.0015 - 30000;
+                                    } else if (unit.taxableStandard <= 300000000) {
+                                      unitTaxBeforeOwnership = unit.taxableStandard * 0.0025 - 165000;
+                                    } else {
+                                      unitTaxBeforeOwnership = unit.taxableStandard * 0.004 - 630000;
+                                    }
+                                  }
+                                  
+                                  const unitTaxAfterOwnership = unitTaxBeforeOwnership * (propertyData.ownershipRatio / 100);
+                                  totalBeforeRounding += unitTaxAfterOwnership;
+                                });
+                                
                                 const totalAfterRounding = Math.floor(totalBeforeRounding / 10) * 10;
                                 return (
                                   <p className="text-sm font-medium text-blue-800">
