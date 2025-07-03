@@ -407,8 +407,8 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                               // 올바른 기본 세액 사용 (특례세율 또는 표준세율)
                               const baseAmount = isSpecialRateApplicable ? result.specialRateAmount : result.standardRateAmount;
                               
-                              const unitTaxBeforeOwnership = Math.floor(baseAmount * (unit.taxableStandard / propertyData.multiUnits.reduce((sum, u) => sum + u.taxableStandard, 0)) / 10) * 10;
-                              const unitTaxAfterOwnership = Math.floor((unitTaxBeforeOwnership * (propertyData.ownershipRatio / 100)) / 10) * 10;
+                              const unitTaxBeforeOwnership = baseAmount * (unit.taxableStandard / propertyData.multiUnits.reduce((sum, u) => sum + u.taxableStandard, 0));
+                              const unitTaxAfterOwnership = unitTaxBeforeOwnership * (propertyData.ownershipRatio / 100);
                               
                               // 세율 공식 텍스트 생성
                               let rateFormula = "세율";
@@ -426,14 +426,20 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                               
                               return (
                                 <p key={unit.id} className="text-sm text-gray-700">
-                                  {index + 1}구: {formatCurrency(unit.taxableStandard)}원 : {rateFormula} × {propertyData.ownershipRatio}% = {formatCurrency(unitTaxAfterOwnership)}원
+                                  {index + 1}구: {formatCurrency(unit.taxableStandard)}원 : {rateFormula} × {propertyData.ownershipRatio}% = {unitTaxAfterOwnership.toFixed(2)}원
                                 </p>
                               );
                             })}
                             <div className="border-t border-blue-300 mt-2 pt-2">
-                              <p className="text-sm font-medium text-blue-800">
-                                합계: {formatCurrency(Math.floor(((propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000 ? result.specialRateAmount : result.standardRateAmount) * (propertyData.ownershipRatio / 100)) / 10) * 10)}원
-                              </p>
+                              {(() => {
+                                const totalBeforeRounding = ((propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000 ? result.specialRateAmount : result.standardRateAmount) * (propertyData.ownershipRatio / 100));
+                                const totalAfterRounding = Math.floor(totalBeforeRounding / 10) * 10;
+                                return (
+                                  <p className="text-sm font-medium text-blue-800">
+                                    합계: {totalBeforeRounding.toFixed(1)}원 → {formatCurrency(totalAfterRounding)}원
+                                  </p>
+                                );
+                              })()}
                             </div>
                           </div>
                           {(propertyData.reductionType === "전세사기 감면" || propertyData.reductionType === "노후연금") && propertyData.currentYearReductionRate > 0 && (
