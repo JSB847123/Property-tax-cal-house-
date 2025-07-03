@@ -288,18 +288,34 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                         </div>
                       );
                     } else {
-                      // 표준세율 적용 시
-                      return (
-                        <div className="text-gray-700">
-                          <p className="font-semibold mb-2">표준세율 적용</p>
-                          <div className="text-sm text-black space-y-1">
-                            <div>• 과세표준이 60,000,000원 이하 → 표준세율: 1,000분의 1(간이세율: 과세표준 × 0.1%)</div>
-                            <div>• 과세표준이 60,000,000원 초과 150,000,000원 이하 → 표준세율: 60,000원＋60,000,000원 초과금액의 1,000분의 1.5(간이세율: 과세표준 × 0.15% - 30,000원)</div>
-                            <div>• 과세표준이 150,000,000원 초과 300,000,000원 이하 → 표준세율: 195,000원 + 150,000,000원 초과금액의 1,000분의 2.5(간이세율: 과세표준 × 0.25% - 180,000원)</div>
-                            <div>• 과세표준이 300,000,000원 초과 → 표준세율: 570,000원＋300,000,000원 초과금액의 1,000분의 4(간이세율: 과세표준액 × 0.4% - 630,000원)</div>
+                      // 다가구주택 + 1세대1주택 특례세율 조건 확인
+                      if (propertyData.propertyType === "다가구주택" && propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000) {
+                        return (
+                          <div className="text-gray-700">
+                            <p className="font-semibold mb-2">특례세율 적용</p>
+                            <p className="text-sm text-gray-600 mb-2">1세대 1주택자 특례세율 (주택공시가격 9억원 이하)</p>
+                            <div className="text-sm text-black space-y-1">
+                              <div>• 과세표준이 60,000,000원 이하 → 특례세율: 1,000분의 0.5</div>
+                              <div>• 과세표준이 60,000,000원 초과 150,000,000원 이하 → 특례세율: 30,000원＋60,000,000원 초과금액의 1,000분의 1</div>
+                              <div>• 과세표준이 150,000,000원 초과 300,000,000원 이하 → 특례세율: 120,000원 + 150,000,000원 초과금액의 1,000분의 2</div>
+                              <div>• 과세표준이 300,000,000원 초과 → 특례세율: 420,000원＋300,000,000원 초과금액의 1,000분의 3.5</div>
+                            </div>
                           </div>
-                        </div>
-                      );
+                        );
+                      } else {
+                        // 표준세율 적용 시
+                        return (
+                          <div className="text-gray-700">
+                            <p className="font-semibold mb-2">표준세율 적용</p>
+                            <div className="text-sm text-black space-y-1">
+                              <div>• 과세표준이 60,000,000원 이하 → 표준세율: 1,000분의 1(간이세율: 과세표준 × 0.1%)</div>
+                              <div>• 과세표준이 60,000,000원 초과 150,000,000원 이하 → 표준세율: 60,000원＋60,000,000원 초과금액의 1,000분의 1.5(간이세율: 과세표준 × 0.15% - 30,000원)</div>
+                              <div>• 과세표준이 150,000,000원 초과 300,000,000원 이하 → 표준세율: 195,000원 + 150,000,000원 초과금액의 1,000분의 2.5(간이세율: 과세표준 × 0.25% - 180,000원)</div>
+                              <div>• 과세표준이 300,000,000원 초과 → 표준세율: 570,000원＋300,000,000원 초과금액의 1,000분의 4(간이세율: 과세표준액 × 0.4% - 630,000원)</div>
+                            </div>
+                          </div>
+                        );
+                      }
                     }
                   })()}
                 </div>
@@ -373,6 +389,36 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                           </div>
 
                           <p className="text-xs text-gray-500 mt-3">※ 기본 세액(소유비율 적용 전): {formatCurrency(Math.floor(result.specialRateAmount / 10) * 10)}원</p>
+                        </div>
+                      );
+                    }
+                    
+                    // 다가구주택 특별 처리
+                    if (propertyData.propertyType === "다가구주택") {
+                      return (
+                        <div className="text-gray-700 space-y-3">
+                          <p className="font-medium">최종 과세표준 × 세율 × 소유비율</p>
+                          <div className="bg-blue-50 p-3 rounded border border-blue-200">
+                            <p className="text-sm text-blue-800 mb-2">하지만, 다가구주택은 구(區)별 과세표준에 소유비율을 곱하여 본세를 산출합니다.</p>
+                            {propertyData.multiUnits && propertyData.multiUnits.map((unit, index) => {
+                              const unitTaxBeforeOwnership = Math.floor(result.standardRateAmount * (unit.taxableStandard / propertyData.multiUnits.reduce((sum, u) => sum + u.taxableStandard, 0)) / 10) * 10;
+                              const unitTaxAfterOwnership = Math.floor((unitTaxBeforeOwnership * (propertyData.ownershipRatio / 100)) / 10) * 10;
+                              return (
+                                <p key={unit.id} className="text-sm text-gray-700">
+                                  {index + 1}구: {formatCurrency(unit.taxableStandard)}원 × 세율 × {propertyData.ownershipRatio}% = {formatCurrency(unitTaxAfterOwnership)}원
+                                </p>
+                              );
+                            })}
+                            <div className="border-t border-blue-300 mt-2 pt-2">
+                              <p className="text-sm font-medium text-blue-800">
+                                합계: {formatCurrency(Math.floor((result.standardRateAmount * (propertyData.ownershipRatio / 100)) / 10) * 10)}원
+                              </p>
+                            </div>
+                          </div>
+                          {(propertyData.reductionType === "전세사기 감면" || propertyData.reductionType === "노후연금") && propertyData.currentYearReductionRate > 0 && (
+                            <p className="text-xs text-purple-600">※ {propertyData.reductionType} {propertyData.currentYearReductionRate}% 적용</p>
+                          )}
+                          <p className="text-xs text-gray-500">※ 기본 세액(소유비율 적용 전): {formatCurrency(result.standardRateAmount)}원</p>
                         </div>
                       );
                     }
