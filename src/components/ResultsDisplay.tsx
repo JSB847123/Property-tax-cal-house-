@@ -401,24 +401,45 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                           <div className="bg-blue-50 p-3 rounded border border-blue-200">
                             <p className="text-sm text-blue-800 mb-2">하지만, 다가구주택은 구(區)별 과세표준에 소유비율을 곱하여 본세를 산출합니다.</p>
                             {propertyData.multiUnits && propertyData.multiUnits.map((unit, index) => {
-                              const unitTaxBeforeOwnership = Math.floor(result.standardRateAmount * (unit.taxableStandard / propertyData.multiUnits.reduce((sum, u) => sum + u.taxableStandard, 0)) / 10) * 10;
+                              // 1주택 특례 세율 적용 여부 확인
+                              const isSpecialRateApplicable = propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000;
+                              
+                              // 올바른 기본 세액 사용 (특례세율 또는 표준세율)
+                              const baseAmount = isSpecialRateApplicable ? result.specialRateAmount : result.standardRateAmount;
+                              
+                              const unitTaxBeforeOwnership = Math.floor(baseAmount * (unit.taxableStandard / propertyData.multiUnits.reduce((sum, u) => sum + u.taxableStandard, 0)) / 10) * 10;
                               const unitTaxAfterOwnership = Math.floor((unitTaxBeforeOwnership * (propertyData.ownershipRatio / 100)) / 10) * 10;
+                              
+                              // 세율 공식 텍스트 생성
+                              let rateFormula = "세율";
+                              if (isSpecialRateApplicable) {
+                                if (unit.taxableStandard <= 60000000) {
+                                  rateFormula = "(과세표준 × 1,000분의 0.5)";
+                                } else if (unit.taxableStandard <= 150000000) {
+                                  rateFormula = "(3만원＋6천만원 초과금액의 1,000분의 1)";
+                                } else if (unit.taxableStandard <= 300000000) {
+                                  rateFormula = "(12만원＋1.5억원 초과금액의 1,000분의 2)";
+                                } else {
+                                  rateFormula = "(42만원＋3억원 초과금액의 1,000분의 3.5)";
+                                }
+                              }
+                              
                               return (
                                 <p key={unit.id} className="text-sm text-gray-700">
-                                  {index + 1}구: {formatCurrency(unit.taxableStandard)}원 × 세율 × {propertyData.ownershipRatio}% = {formatCurrency(unitTaxAfterOwnership)}원
+                                  {index + 1}구: {formatCurrency(unit.taxableStandard)}원 : {rateFormula} × {propertyData.ownershipRatio}% = {formatCurrency(unitTaxAfterOwnership)}원
                                 </p>
                               );
                             })}
                             <div className="border-t border-blue-300 mt-2 pt-2">
                               <p className="text-sm font-medium text-blue-800">
-                                합계: {formatCurrency(Math.floor((result.standardRateAmount * (propertyData.ownershipRatio / 100)) / 10) * 10)}원
+                                합계: {formatCurrency(Math.floor(((propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000 ? result.specialRateAmount : result.standardRateAmount) * (propertyData.ownershipRatio / 100)) / 10) * 10)}원
                               </p>
                             </div>
                           </div>
                           {(propertyData.reductionType === "전세사기 감면" || propertyData.reductionType === "노후연금") && propertyData.currentYearReductionRate > 0 && (
                             <p className="text-xs text-purple-600">※ {propertyData.reductionType} {propertyData.currentYearReductionRate}% 적용</p>
                           )}
-                          <p className="text-xs text-gray-500">※ 기본 세액(소유비율 적용 전): {formatCurrency(result.standardRateAmount)}원</p>
+                          <p className="text-xs text-gray-500">※ 기본 세액(소유비율 적용 전): {formatCurrency(propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000 ? result.specialRateAmount : result.standardRateAmount)}원</p>
                         </div>
                       );
                     }
