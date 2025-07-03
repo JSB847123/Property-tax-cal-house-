@@ -50,6 +50,12 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
     // 다가구주택에서도 1세대 1주택 특례세율 적용 가능
     const isSpecialRateApplicable = safePropertyData.isSingleHousehold && safePropertyData.publicPrice <= 900000000;
     console.log('다가구주택: 1세대 1주택 특례세율 적용 여부:', isSpecialRateApplicable);
+    console.log('다가구주택 디버그:', {
+      isSingleHousehold: safePropertyData.isSingleHousehold,
+      publicPrice: safePropertyData.publicPrice,
+      publicPriceCheck: safePropertyData.publicPrice <= 900000000,
+      isSpecialRateApplicable
+    });
     let specialRateTax = 0;
     let standardRateTax = 0;
     
@@ -302,8 +308,8 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
       }
     });
     
-    const totalBeforeRounding = multiUnitTaxResult.unitCalculations.reduce((sum, calc) => sum + calc.taxAmount, 0);
-    calculationDetails += `\n\n각 구별 세액 합계: ${Math.round(totalBeforeRounding * 1000) / 1000}원`;
+    const unitTaxTotalBeforeRounding = multiUnitTaxResult.unitCalculations.reduce((sum, calc) => sum + calc.taxAmount, 0);
+    calculationDetails += `\n\n각 구별 세액 합계: ${Math.round(unitTaxTotalBeforeRounding * 1000) / 1000}원`;
     calculationDetails += `\n10원 단위 내림 적용: ${formatNumberWithCommas(basePropertyTax)}원`;
     
     calculationDetails += `\n\n3. 과세표준을 적용한 계산`;
@@ -325,23 +331,60 @@ export const performTaxCalculation = (propertyData: PropertyData): CalculationRe
       const unitTaxAfterOwnership = Math.floor((unitTaxBeforeOwnership * (safePropertyData.ownershipRatio / 100)) / 10) * 10;
       
       if (isSpecialRateApplicable) {
-        // 특례세율 적용 시 사용자 요구사항에 맞는 공식 표시
+        // 특례세율 적용 시 구체적인 세율 공식과 계산 과정 표시
         if (calc.taxableStandard <= 60000000) {
-          calculationDetails += `\n\n* ${index + 1}구: ${formatNumberWithCommas(calc.taxableStandard)}원 × 1주택 특례 세율 × ${safePropertyData.ownershipRatio}% = ${formatNumberWithCommas(unitTaxAfterOwnership)}원`;
+          const beforeOwnership = calc.taxableStandard * 0.0005;
+          const afterOwnership = beforeOwnership * (safePropertyData.ownershipRatio / 100);
+          calculationDetails += `\n\n${index + 1}구: ${formatNumberWithCommas(calc.taxableStandard)}원 : (과세표준 × 1,000분의 0.5) × ${safePropertyData.ownershipRatio}% = ${afterOwnership.toFixed(3)}원`;
         } else if (calc.taxableStandard <= 150000000) {
-          calculationDetails += `\n\n* ${index + 1}구: ${formatNumberWithCommas(calc.taxableStandard)}원 × (3만원＋6천만원 초과금액의 1,000분의 1) × ${safePropertyData.ownershipRatio}% = ${formatNumberWithCommas(unitTaxAfterOwnership)}원`;
+          const excessAmount = calc.taxableStandard - 60000000;
+          const beforeOwnership = 30000 + (excessAmount * 0.001);
+          const afterOwnership = beforeOwnership * (safePropertyData.ownershipRatio / 100);
+          calculationDetails += `\n\n${index + 1}구: ${formatNumberWithCommas(calc.taxableStandard)}원 : (3만원＋6천만원 초과금액의 1,000분의 1) × ${safePropertyData.ownershipRatio}% = ${afterOwnership.toFixed(3)}원`;
         } else if (calc.taxableStandard <= 300000000) {
-          calculationDetails += `\n\n* ${index + 1}구: ${formatNumberWithCommas(calc.taxableStandard)}원 × (12만원＋1.5억원 초과금액의 1,000분의 2) × ${safePropertyData.ownershipRatio}% = ${formatNumberWithCommas(unitTaxAfterOwnership)}원`;
+          const excessAmount = calc.taxableStandard - 150000000;
+          const beforeOwnership = 120000 + (excessAmount * 0.002);
+          const afterOwnership = beforeOwnership * (safePropertyData.ownershipRatio / 100);
+          calculationDetails += `\n\n${index + 1}구: ${formatNumberWithCommas(calc.taxableStandard)}원 : (12만원＋1.5억원 초과금액의 1,000분의 2) × ${safePropertyData.ownershipRatio}% = ${afterOwnership.toFixed(3)}원`;
         } else {
-          calculationDetails += `\n\n* ${index + 1}구: ${formatNumberWithCommas(calc.taxableStandard)}원 × (42만원＋3억원 초과금액의 1,000분의 3.5) × ${safePropertyData.ownershipRatio}% = ${formatNumberWithCommas(unitTaxAfterOwnership)}원`;
+          const excessAmount = calc.taxableStandard - 300000000;
+          const beforeOwnership = 420000 + (excessAmount * 0.0035);
+          const afterOwnership = beforeOwnership * (safePropertyData.ownershipRatio / 100);
+          calculationDetails += `\n\n${index + 1}구: ${formatNumberWithCommas(calc.taxableStandard)}원 : (42만원＋3억원 초과금액의 1,000분의 3.5) × ${safePropertyData.ownershipRatio}% = ${afterOwnership.toFixed(3)}원`;
         }
       } else {
-        calculationDetails += `\n\n* ${index + 1}구: ${formatNumberWithCommas(calc.taxableStandard)}원 × 세율 × ${safePropertyData.ownershipRatio}% = ${formatNumberWithCommas(unitTaxAfterOwnership)}원`;
+        // 표준세율 적용 시 구체적인 세율 공식과 계산 과정 표시
+        if (calc.taxableStandard <= 60000000) {
+          const beforeOwnership = calc.taxableStandard * 0.001;
+          const afterOwnership = beforeOwnership * (safePropertyData.ownershipRatio / 100);
+          calculationDetails += `\n\n${index + 1}구: ${formatNumberWithCommas(calc.taxableStandard)}원 : (과세표준 × 1,000분의 1) × ${safePropertyData.ownershipRatio}% = ${afterOwnership.toFixed(3)}원`;
+        } else if (calc.taxableStandard <= 150000000) {
+          const excessAmount = calc.taxableStandard - 60000000;
+          const beforeOwnership = 60000 + (excessAmount * 0.0015);
+          const afterOwnership = beforeOwnership * (safePropertyData.ownershipRatio / 100);
+          calculationDetails += `\n\n${index + 1}구: ${formatNumberWithCommas(calc.taxableStandard)}원 : (6만원＋6천만원 초과금액의 1,000분의 1.5) × ${safePropertyData.ownershipRatio}% = ${afterOwnership.toFixed(3)}원`;
+        } else if (calc.taxableStandard <= 300000000) {
+          const excessAmount = calc.taxableStandard - 150000000;
+          const beforeOwnership = 195000 + (excessAmount * 0.0025);
+          const afterOwnership = beforeOwnership * (safePropertyData.ownershipRatio / 100);
+          calculationDetails += `\n\n${index + 1}구: ${formatNumberWithCommas(calc.taxableStandard)}원 : (19만 5천원＋1.5억원 초과금액의 1,000분의 2.5) × ${safePropertyData.ownershipRatio}% = ${afterOwnership.toFixed(3)}원`;
+        } else {
+          const excessAmount = calc.taxableStandard - 300000000;
+          const beforeOwnership = 570000 + (excessAmount * 0.004);
+          const afterOwnership = beforeOwnership * (safePropertyData.ownershipRatio / 100);
+          calculationDetails += `\n\n${index + 1}구: ${formatNumberWithCommas(calc.taxableStandard)}원 : (57만원＋3억원 초과금액의 1,000분의 4) × ${safePropertyData.ownershipRatio}% = ${afterOwnership.toFixed(3)}원`;
+        }
       }
     });
     
-    const totalAfterOwnership = Math.floor((basePropertyTax * (safePropertyData.ownershipRatio / 100)) / 10) * 10;
-    calculationDetails += `\n\n* 합계: ${formatNumberWithCommas(totalAfterOwnership)}원`;
+    // 합계 계산 - 소수점 표시 후 10원 단위 내림
+    const totalWithOwnershipBeforeRounding = multiUnitTaxResult.unitCalculations.reduce((sum, calc) => {
+      const unitTaxBeforeOwnership = calc.taxAmount;
+      const unitTaxAfterOwnership = unitTaxBeforeOwnership * (safePropertyData.ownershipRatio / 100);
+      return sum + unitTaxAfterOwnership;
+    }, 0);
+    const totalAfterOwnership = Math.floor(totalWithOwnershipBeforeRounding / 10) * 10;
+    calculationDetails += `\n\n합계: ${totalWithOwnershipBeforeRounding.toFixed(1)}원 → ${formatNumberWithCommas(totalAfterOwnership)}원`;
     
     calculationDetails += `\n\n4. 소유비율 적용`;
     calculationDetails += `\n기본 재산세 ${formatNumberWithCommas(basePropertyTax)}원 × ${safePropertyData.ownershipRatio}% = ${formatNumberWithCommas(Math.floor((basePropertyTax * (safePropertyData.ownershipRatio / 100)) / 10) * 10)}원`;
