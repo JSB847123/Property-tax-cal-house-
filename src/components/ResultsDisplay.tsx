@@ -553,12 +553,54 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                         {(() => {
                           const taxBurdenCapAmount = Math.floor((propertyData.previousYear.actualPaidTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10;
                           
-                          // 올바른 기본 세액 사용 - specialRateAmount 또는 standardRateAmount 중 적용된 것 사용
-                          const basePropertyTaxBeforeOwnership = propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000 && propertyData.propertyType !== "다가구주택" 
-                            ? result.specialRateAmount 
-                            : result.standardRateAmount;
-                          const roundedBasePropertyTax = Math.floor(basePropertyTaxBeforeOwnership / 10) * 10;
-                          const propertyTaxWithOwnership = Math.floor((roundedBasePropertyTax * (propertyData.ownershipRatio / 100)) / 10) * 10;
+                          let basePropertyTaxBeforeOwnership: number;
+                          let propertyTaxWithOwnership: number;
+                          
+                          if (propertyData.propertyType === "다가구주택") {
+                            // 다가구주택의 경우 각 구별 계산값의 합계 사용
+                            const isSpecialRateApplicable = propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000;
+                            let totalBeforeRounding = 0;
+                            
+                            propertyData.multiUnits.forEach((unit) => {
+                              let unitTaxBeforeOwnership: number;
+                              
+                              if (isSpecialRateApplicable) {
+                                // 1세대 1주택 특례세율 적용
+                                if (unit.taxableStandard <= 60000000) {
+                                  unitTaxBeforeOwnership = unit.taxableStandard * 0.0005;
+                                } else if (unit.taxableStandard <= 150000000) {
+                                  unitTaxBeforeOwnership = 30000 + (unit.taxableStandard - 60000000) * 0.001;
+                                } else if (unit.taxableStandard <= 300000000) {
+                                  unitTaxBeforeOwnership = 120000 + (unit.taxableStandard - 150000000) * 0.002;
+                                } else {
+                                  unitTaxBeforeOwnership = 420000 + (unit.taxableStandard - 300000000) * 0.0035;
+                                }
+                              } else {
+                                // 표준세율(간이세율) 적용
+                                if (unit.taxableStandard <= 6000000) {
+                                  unitTaxBeforeOwnership = unit.taxableStandard * 0.001;
+                                } else if (unit.taxableStandard <= 150000000) {
+                                  unitTaxBeforeOwnership = unit.taxableStandard * 0.0015 - 30000;
+                                } else if (unit.taxableStandard <= 300000000) {
+                                  unitTaxBeforeOwnership = unit.taxableStandard * 0.0025 - 165000;
+                                } else {
+                                  unitTaxBeforeOwnership = unit.taxableStandard * 0.004 - 630000;
+                                }
+                              }
+                              
+                              const unitTaxAfterOwnership = unitTaxBeforeOwnership * (propertyData.ownershipRatio / 100);
+                              totalBeforeRounding += unitTaxAfterOwnership;
+                            });
+                            
+                            propertyTaxWithOwnership = Math.floor(totalBeforeRounding / 10) * 10;
+                          } else {
+                            // 단일주택의 경우 기존 로직 사용
+                            basePropertyTaxBeforeOwnership = propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000 
+                              ? result.specialRateAmount 
+                              : result.standardRateAmount;
+                            const roundedBasePropertyTax = Math.floor(basePropertyTaxBeforeOwnership / 10) * 10;
+                            propertyTaxWithOwnership = Math.floor((roundedBasePropertyTax * (propertyData.ownershipRatio / 100)) / 10) * 10;
+                          }
                           
                           // 감면 전 값으로 비교 (순수한 과세표준 적용 재산세와 세부담상한액 비교)
                           const finalSelectedAmount = Math.min(propertyTaxWithOwnership, taxBurdenCapAmount);
@@ -595,18 +637,66 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                     {(() => {
                       // 감면 전 재산세 계산
                       let beforeReductionTax = 0;
-                      if (propertyData.previousYear.actualPaidTax > 0) {
-                        const taxBurdenCapAmount = Math.floor((propertyData.previousYear.actualPaidTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10;
-                        const basePropertyTaxBeforeOwnership = propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000 && propertyData.propertyType !== "다가구주택" 
-                          ? result.specialRateAmount 
-                          : result.standardRateAmount;
-                        const propertyTaxWithOwnership = Math.floor((Math.floor(basePropertyTaxBeforeOwnership / 10) * 10 * (propertyData.ownershipRatio / 100)) / 10) * 10;
-                        beforeReductionTax = Math.min(propertyTaxWithOwnership, taxBurdenCapAmount);
+                      
+                      if (propertyData.propertyType === "다가구주택") {
+                        // 다가구주택의 경우 각 구별 계산값의 합계 사용
+                        const isSpecialRateApplicable = propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000;
+                        let totalBeforeRounding = 0;
+                        
+                        propertyData.multiUnits.forEach((unit) => {
+                          let unitTaxBeforeOwnership: number;
+                          
+                          if (isSpecialRateApplicable) {
+                            // 1세대 1주택 특례세율 적용
+                            if (unit.taxableStandard <= 60000000) {
+                              unitTaxBeforeOwnership = unit.taxableStandard * 0.0005;
+                            } else if (unit.taxableStandard <= 150000000) {
+                              unitTaxBeforeOwnership = 30000 + (unit.taxableStandard - 60000000) * 0.001;
+                            } else if (unit.taxableStandard <= 300000000) {
+                              unitTaxBeforeOwnership = 120000 + (unit.taxableStandard - 150000000) * 0.002;
+                            } else {
+                              unitTaxBeforeOwnership = 420000 + (unit.taxableStandard - 300000000) * 0.0035;
+                            }
+                          } else {
+                            // 표준세율(간이세율) 적용
+                            if (unit.taxableStandard <= 6000000) {
+                              unitTaxBeforeOwnership = unit.taxableStandard * 0.001;
+                            } else if (unit.taxableStandard <= 150000000) {
+                              unitTaxBeforeOwnership = unit.taxableStandard * 0.0015 - 30000;
+                            } else if (unit.taxableStandard <= 300000000) {
+                              unitTaxBeforeOwnership = unit.taxableStandard * 0.0025 - 165000;
+                            } else {
+                              unitTaxBeforeOwnership = unit.taxableStandard * 0.004 - 630000;
+                            }
+                          }
+                          
+                          const unitTaxAfterOwnership = unitTaxBeforeOwnership * (propertyData.ownershipRatio / 100);
+                          totalBeforeRounding += unitTaxAfterOwnership;
+                        });
+                        
+                        const propertyTaxWithOwnership = Math.floor(totalBeforeRounding / 10) * 10;
+                        
+                        if (propertyData.previousYear.actualPaidTax > 0) {
+                          const taxBurdenCapAmount = Math.floor((propertyData.previousYear.actualPaidTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10;
+                          beforeReductionTax = Math.min(propertyTaxWithOwnership, taxBurdenCapAmount);
+                        } else {
+                          beforeReductionTax = propertyTaxWithOwnership;
+                        }
                       } else {
-                        const basePropertyTaxBeforeOwnership = propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000 && propertyData.propertyType !== "다가구주택" 
-                          ? result.specialRateAmount 
-                          : result.standardRateAmount;
-                        beforeReductionTax = Math.floor((Math.floor(basePropertyTaxBeforeOwnership / 10) * 10 * (propertyData.ownershipRatio / 100)) / 10) * 10;
+                        // 단일주택의 경우 기존 로직 사용
+                        if (propertyData.previousYear.actualPaidTax > 0) {
+                          const taxBurdenCapAmount = Math.floor((propertyData.previousYear.actualPaidTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10;
+                          const basePropertyTaxBeforeOwnership = propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000 
+                            ? result.specialRateAmount 
+                            : result.standardRateAmount;
+                          const propertyTaxWithOwnership = Math.floor((Math.floor(basePropertyTaxBeforeOwnership / 10) * 10 * (propertyData.ownershipRatio / 100)) / 10) * 10;
+                          beforeReductionTax = Math.min(propertyTaxWithOwnership, taxBurdenCapAmount);
+                        } else {
+                          const basePropertyTaxBeforeOwnership = propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000 
+                            ? result.specialRateAmount 
+                            : result.standardRateAmount;
+                          beforeReductionTax = Math.floor((Math.floor(basePropertyTaxBeforeOwnership / 10) * 10 * (propertyData.ownershipRatio / 100)) / 10) * 10;
+                        }
                       }
                       
                       return (
