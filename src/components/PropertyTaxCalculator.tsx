@@ -1826,7 +1826,7 @@ const PropertyTaxCalculator = () => {
             
             {/* 전년도 일반 주택 정보 (다가구주택이 아닌 경우에만 표시) */}
             {propertyData.propertyType !== "다가구주택" && (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-gray-700">전년도 공시가격 (원)</Label>
                   <Input
@@ -1881,22 +1881,6 @@ const PropertyTaxCalculator = () => {
                     value={propertyData.previousYear.taxableStandard ? formatNumberWithCommas(propertyData.previousYear.taxableStandard) : ""}
                     readOnly
                     className="bg-gray-50"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">전년도 지역자원시설세 과세표준 (원)</Label>
-                  <Input
-                    type="text"
-                    placeholder="미입력시 0원 적용"
-                    value={propertyData.previousYear.regionalResourceTaxStandard !== undefined && propertyData.previousYear.regionalResourceTaxStandard !== null ? formatNumberWithCommas(propertyData.previousYear.regionalResourceTaxStandard) : ""}
-                    onChange={(e) => setPropertyData(prev => ({
-                      ...prev,
-                      previousYear: {
-                        ...prev.previousYear,
-                        regionalResourceTaxStandard: parseNumberFromInput(e.target.value)
-                      }
-                    }))}
                   />
                 </div>
               </div>

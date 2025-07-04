@@ -441,10 +441,11 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                               }
                               
                               const unitTaxAfterOwnership = unitTaxBeforeOwnership * (propertyData.ownershipRatio / 100);
+                              const unitTaxAfterRounding = Math.floor(unitTaxAfterOwnership / 10) * 10;
                               
                               return (
                                 <p key={unit.id} className="text-sm text-gray-700">
-                                  {index + 1}구: {formatCurrency(unit.taxableStandard)}원 : {rateFormula} × {propertyData.ownershipRatio}% = {unitTaxAfterOwnership.toFixed(2)}원
+                                  {index + 1}구: {formatCurrency(unit.taxableStandard)}원 : {rateFormula} × {propertyData.ownershipRatio}% = {unitTaxAfterOwnership.toFixed(2)}원 → {formatCurrency(unitTaxAfterRounding)}원
                                 </p>
                               );
                             })}
@@ -482,13 +483,13 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                                   }
                                   
                                   const unitTaxAfterOwnership = unitTaxBeforeOwnership * (propertyData.ownershipRatio / 100);
-                                  totalBeforeRounding += unitTaxAfterOwnership;
+                                  const unitTaxAfterRounding = Math.floor(unitTaxAfterOwnership / 10) * 10;
+                                  totalBeforeRounding += unitTaxAfterRounding;
                                 });
                                 
-                                const totalAfterRounding = Math.floor(totalBeforeRounding / 10) * 10;
                                 return (
                                   <p className="text-sm font-medium text-blue-800">
-                                    합계: {totalBeforeRounding.toFixed(1)}원 → {formatCurrency(totalAfterRounding)}원
+                                    합계: {formatCurrency(totalBeforeRounding)}원
                                   </p>
                                 );
                               })()}
@@ -589,10 +590,11 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                               }
                               
                               const unitTaxAfterOwnership = unitTaxBeforeOwnership * (propertyData.ownershipRatio / 100);
-                              totalBeforeRounding += unitTaxAfterOwnership;
+                              const unitTaxAfterRounding = Math.floor(unitTaxAfterOwnership / 10) * 10;
+                              totalBeforeRounding += unitTaxAfterRounding;
                             });
                             
-                            propertyTaxWithOwnership = Math.floor(totalBeforeRounding / 10) * 10;
+                            propertyTaxWithOwnership = totalBeforeRounding;
                           } else {
                             // 단일주택의 경우 기존 로직 사용
                             basePropertyTaxBeforeOwnership = propertyData.isSingleHousehold && propertyData.publicPrice <= 900000000 
@@ -671,10 +673,11 @@ const ResultsDisplay = ({ result, propertyData, marketValueRatio, showAdvanced }
                           }
                           
                           const unitTaxAfterOwnership = unitTaxBeforeOwnership * (propertyData.ownershipRatio / 100);
-                          totalBeforeRounding += unitTaxAfterOwnership;
+                          const unitTaxAfterRounding = Math.floor(unitTaxAfterOwnership / 10) * 10;
+                          totalBeforeRounding += unitTaxAfterRounding;
                         });
                         
-                        const propertyTaxWithOwnership = Math.floor(totalBeforeRounding / 10) * 10;
+                        const propertyTaxWithOwnership = totalBeforeRounding;
                         
                         if (propertyData.previousYear.actualPaidTax > 0) {
                           const taxBurdenCapAmount = Math.floor((propertyData.previousYear.actualPaidTax * (propertyData.taxBurdenCapRate / 100)) / 10) * 10;
